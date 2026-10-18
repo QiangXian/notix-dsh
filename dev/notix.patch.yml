@@ -1,0 +1,16 @@
+# Boot-time overlay used to try Notix against a stock profile without
+# installing it:
+#   dsh --profile web --patch ./dev/notix.patch.yml --dump-config
+# Adjust the two absolute paths if the repository moves.
+- insert:
+    - id: notix
+      name: /Users/jiangxianjie/Desktop/Notix-dsh/packages/notix-dsh/lib/index.js
+      config:
+        language: zh
+        channels:
+          macos:
+            enabled: true
+            sound: true
+            clickToOpen: true
+    - id: ui-notix
+      name: /Users/jiangxianjie/Desktop/Notix-dsh/packages/notix-dsh-ui/lib/index.js

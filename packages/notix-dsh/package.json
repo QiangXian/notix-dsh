@@ -1,0 +1,46 @@
+{
+  "name": "notix-dsh",
+  "version": "0.1.0",
+  "description": "Notifications for DeepSeek Harness: approvals, pending questions, long tasks, errors and completions.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "icon.png",
+    "cordis.patch.yml",
+    "locale",
+    "README.md",
+    "README.zh.md",
+    "assets",
+    "scripts"
+  ],
+  "icon": "./icon.png",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "engines": {
+    "dsh": ">=0.2.1-rc.2 <0.3.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.0.5"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.5",
+    "zod": "^4.4.3"
+  },
+  "license": "MIT",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "notification",
+    "deepseek-harness"
+  ]
+}

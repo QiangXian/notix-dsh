@@ -1,0 +1,41 @@
+# Notix bundle layer: insert the plugin row with its shipped defaults.
+# Users override fields under the same id in the profile's cordis.patch.yml.
+- insert:
+    - id: notix
+      name: notix-dsh
+      config:
+        language: zh
+        verbosity: minimal
+        triggers:
+          approval:
+            enabled: true
+            remindAfterMs: 300000
+            maxReminders: 2
+          userQuestion:
+            enabled: true
+            remindAfterMs: 300000
+            maxReminders: 2
+            remindOnContinued: true
+          longTask:
+            enabled: true
+            turnThresholdMs: 600000
+            jobThresholdMs: 900000
+          error:
+            enabled: true
+            cooldownMs: 60000
+            toolErrors: false
+            toolTimeout: false
+          completion:
+            enabled: true
+            minDurationMs: 180000
+            jobs: true
+        quietHours:
+          enabled: false
+          from: "23:00"
+          to: "08:00"
+          allowUrgent: true
+        channels:
+          macos:
+            enabled: true
+            sound: true
+            clickToOpen: true

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Notix notifications",
+    "description": "Desktop notifications when an agent needs input, runs long, fails, or finishes."
+  }
+}

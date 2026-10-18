@@ -1,0 +1,5 @@
+# Notix Settings UI: insert the client plugin that renders the Notix card on
+# the Plugins settings page. It edits the `notix` namespace served by notix-dsh.
+- insert:
+    - id: ui-notix
+      name: notix-dsh-ui

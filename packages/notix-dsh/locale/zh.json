@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Notix 通知",
+    "description": "agent 需要输入、运行过久、执行出错或任务完成时发送桌面通知。"
+  }
+}
