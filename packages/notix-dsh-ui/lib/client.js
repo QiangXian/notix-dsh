@@ -636,6 +636,14 @@ window.__ModuleLoader__.load({
 				locale: NS,
 				inject: () => ({ form })
 			}, NotixCard))), "notix-dsh-ui: page");
+			ctx.effect(() => ctx.configForms.whileServed([NOTIX_NS], () => ctx.slots.inject("settings.plugins.tab", () => ctx.slots.register({
+				name: "settings.plugins.tab",
+				id: "notix",
+				order: 30,
+				label: () => t("title"),
+				locale: NS,
+				inject: () => ({ form })
+			}, NotixCard))), "notix-dsh-ui: settings tab");
 		}
 		//#endregion
 		exports.NS = NS;

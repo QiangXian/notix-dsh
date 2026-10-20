@@ -5,7 +5,7 @@
 ## 1. 定位与挂载
 
 - 客户端插件，id `notix-dsh-ui`，通过 `cordis.patch.yml` 以 `ui-notix` 插入。
-- 浏览器半（`lib/client.js`）向插件设置页的 `plugins.item` 插槽注册一张卡片；外层用 `ctx.slots.inject('plugins.item', ...)` + `ctx.effect(() => ctx.configForms.whileServed(['notix'], ...))`，仅当 Host 组合了 `notix` 插件时卡片才出现。
+- 浏览器半（`lib/client.js`）向**两个页面**各注册一张卡片：**侧边栏「插件」页**的 `plugins.item` 插槽，与**设置 → 插件页**的 `settings.plugins.tab` 插槽（显示为「Notix 通知」标签页）；外层用 `ctx.slots.inject(...)` + `ctx.effect(() => ctx.configForms.whileServed(['notix'], ...))`，仅当 Host 组合了 `notix` 插件时卡片才出现。
 - 卡片折叠态（`view === 'summary'`）显示动态状态摘要（`已启用触发器 n/5 · 免打扰 开/关 · macOS 渠道 开/关`）；快照未就绪时回退为静态 description。展开态渲染完整表单，页内顶部同样常驻该摘要行。
 - 配置读写唯一通道是 `ctx.configForms.get('notix')` 返回的 **ConfigFormController**。不使用 `SettingsFormModel`/`settingsNumberField`，因为它们只覆盖顶层单字段，而 Notix 配置大量是嵌套对象（`triggers.*`、`quietHours.*`、`channels.macos.*`）。
 

@@ -1,6 +1,6 @@
 {
   "name": "notix-dsh",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Notifications for DeepSeek Harness: approvals, pending questions, long tasks, errors and completions.",
   "type": "module",
   "main": "lib/index.js",
