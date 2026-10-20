@@ -23,7 +23,7 @@
 3. **免打扰**：启用开关 + `from`/`to` 时间 + 允许紧急通知开关（子项随开关禁用）。
 4. **通知内容**：语言下拉（zh/en）、详略程度下拉（minimal/normal）。
 5. **macOS 渠道**：启用/声音/点击打开开关 + baseUrl 文本（子项随渠道开关禁用），以及「发送测试通知」**占位按钮**——禁用态并附说明，标注为后续能力（见 §8）。
-6. **底部状态区**：保存中 / 已保存 / 保存失败 / 只读原因 + 「修改即时生效、插件会重载」的常驻提示。
+6. **底部状态区**：保存中 / 已保存 / 保存失败 / 只读原因 + 「修改即时生效」的常驻提示。
 
 分组顺序与用户心智一致：先「什么时候打扰我」，再「什么时候别打扰我」，然后「通知长什么样」，最后「发到哪儿」。
 
@@ -78,7 +78,7 @@
 | readOnly | 本部署的设置为只读，以下字段不可编辑。 | This deployment stores settings read-only; the fields below are not editable. |
 | saving / saved | 保存中… / 已保存。 | Saving… / Saved. |
 | saveFailed | 本部署没有接受这些值，已保留供你修改。 | The deployment did not accept these values; they were left for you to correct. |
-| reloadNote | 修改即时生效；Notix 插件会重载以应用新配置。 | Changes take effect immediately; the Notix plugin reloads to apply them. |
+| reloadNote | 修改即时生效。 | Changes take effect immediately. |
 | sectionTriggers / sectionQuietHours / sectionContent / sectionChannel | 触发时机 / 免打扰 / 通知内容 / macOS 渠道 | When to notify / Quiet hours / Notification content / macOS channel |
 | triggerApproval(+Hint) | 审批请求 / 工具调用等待你批准时通知。 | Approval requests / Notify when a tool call waits for your approval. |
 | triggerUserQuestion(+Hint) | 待回答问题 / Agent 向你提问并等待回答时通知。 | Pending questions / Notify when the Agent asks you a question. |
@@ -128,7 +128,7 @@
 
 ## 9. 已知限制
 
-1. **保存触发插件重载**：每次 `mutate` 由 Host 的 dsh-config-editor 落到 profile patch 并即时生效，Notix 插件会重载。卡片通过快照订阅自然回弹，但连续快速输入会被写入期的全局禁用限制（设计使然）。
+1. **保存为热更新**：`mutate` 由 Host 的 dsh-config-editor 落到 profile patch，Loader 将 volatile-only 变更提交进运行中的 fiber（插件不重载），Notix 监听 `loader/volatile-update` 原地更新配置。卡片通过快照订阅自然回弹；连续快速输入仍受写入期全局禁用限制（设计使然）。
 2. **无法发送测试通知**：Host 侧没有暴露 Remote 能力（`grep -rn "remote\|typert" packages/notix-dsh/lib` 无结果），UI 不臆造 API；渠道分组内放置了**禁用态占位按钮**并注明「后续版本提供」，当前只能通过修改配置后等待真实触发来验证链路。
 3. **无「恢复默认」**：未实现 `unset` 入口，恢复默认需手动改回 schema 默认值或编辑 profile patch。
 4. **分钟换算精度**：时长以分钟输入、两位小数显示；亚秒级毫秒值（非 60000 的倍数）在 UI 中不可表达，但快照回显会四舍五入展示，不改写底层值（只有用户提交时才换算）。

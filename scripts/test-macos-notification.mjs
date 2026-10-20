@@ -10,10 +10,8 @@ const logger = {
   warn: (message) => console.warn(`[notix] ${message}`),
 }
 
-const channel = new MacosChannel(
-  { enabled: true, sound: true, clickToOpen: false, baseUrl: '' },
-  logger,
-)
+const config = { enabled: true, sound: true, clickToOpen: false, baseUrl: '', notifierApp: '', appIcon: '' }
+const channel = new MacosChannel(() => config, logger)
 await channel.send({
   title: 'Notix 渠道自检',
   body: '如果你看到这条通知，macOS 通知通道可用。',

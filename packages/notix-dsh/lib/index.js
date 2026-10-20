@@ -7,7 +7,7 @@
  * channel registry (macOS system notification in v1).
  * @module notix-dsh
  */
-import { resolveConfig } from './config.js'
+import { readConfig } from './config.js'
 import { buildSchema } from './schema.js'
 import { NotixCore } from './core/notix.js'
 import { installTriggers } from './triggers/index.js'
@@ -53,11 +53,20 @@ function createLogger(ctx) {
  * @param rawConfig - Loader-validated configuration.
  */
 export async function apply(ctx, rawConfig) {
-  const config = resolveConfig(rawConfig)
+  const config = readConfig(rawConfig)
   const logger = createLogger(ctx)
   const core = new NotixCore(ctx, config, logger)
   await core.start()
   installTriggers(ctx, core)
+  // Volatile Settings edits are committed into the running fiber; re-read the
+  // references and apply them without a remount.
+  ctx.on('loader/volatile-update', () => {
+    try {
+      core.replaceConfig(readConfig(rawConfig))
+    } catch (error) {
+      logger.warn(`notix: applying live configuration failed: ${String(error)}`)
+    }
+  })
   ctx.provide('notix', core.api())
   ctx.effect(() => () => core.dispose(), 'notix: dispose')
   logger.info('notix: watching approvals, questions, long tasks, errors, and completions')

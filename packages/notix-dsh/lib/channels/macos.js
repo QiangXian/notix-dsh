@@ -35,11 +35,11 @@ end run`
 /** macOS notification adapter. */
 export class MacosChannel {
   /**
-   * @param config - resolved `channels.macos` configuration.
+   * @param getConfig - returns the live `channels.macos` configuration.
    * @param logger - plugin logger.
    */
-  constructor(config, logger) {
-    this.config = config
+  constructor(getConfig, logger) {
+    this.getConfig = getConfig
     this.logger = logger
     /** @type {Promise<{kind: string, executable?: string, tool?: string}>|undefined} */
     this.backend = undefined
@@ -52,12 +52,12 @@ export class MacosChannel {
 
   /** Path of the helper app bundle. */
   get notifierAppPath() {
-    return this.config.notifierApp || DEFAULT_APP
+    return this.getConfig().notifierApp || DEFAULT_APP
   }
 
   /** Path of the whale icon handed to terminal-notifier. */
   get appIconPath() {
-    return this.config.appIcon || DEFAULT_APP_ICON
+    return this.getConfig().appIcon || DEFAULT_APP_ICON
   }
 
   /** Resolve the delivery backend once; unknown tools fall back to osascript. */
@@ -102,7 +102,8 @@ export class MacosChannel {
   async send(notification) {
     if (process.platform !== 'darwin') throw new Error('macos-system channel is only available on macOS')
     const backend = await this.detectBackend()
-    const sound = this.config.sound !== false
+    const config = this.getConfig()
+    const sound = config.sound !== false
     if (backend.kind === 'helper-app') {
       await this.sendWithHelper(backend.executable, notification, sound)
       return
@@ -111,7 +112,7 @@ export class MacosChannel {
       const args = ['-title', notification.title, '-message', notification.body, '-group', notification.dedupeKey]
       if (existsSync(this.appIconPath)) args.push('-appIcon', this.appIconPath)
       if (sound) args.push('-sound', 'default')
-      const url = this.config.clickToOpen && this.config.baseUrl ? this.config.baseUrl : ''
+      const url = config.clickToOpen && config.baseUrl ? config.baseUrl : ''
       if (url !== '') args.push('-open', url)
       await run(backend.tool, args)
       return

@@ -82,3 +82,43 @@ function merge(base, override) {
 export function resolveConfig(raw) {
   return merge(DEFAULTS, raw)
 }
+
+/**
+ * Whether a validated config node is a schemastery volatile reference.
+ * Volatile refs are frozen objects exposing `get()` and no enumerable keys.
+ */
+function isVolatileRef(value) {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof value.get === 'function' &&
+    Object.isFrozen(value) &&
+    Object.keys(value).every((key) => key === 'get')
+  )
+}
+
+/**
+ * Recursively replace volatile references with their current snapshot.
+ * @param value - validated config (possibly containing refs) or a snapshot.
+ * @returns plain values with the same shape.
+ */
+export function unwrapVolatile(value) {
+  if (isVolatileRef(value)) return unwrapVolatile(value.get())
+  if (Array.isArray(value)) return value.map((item) => unwrapVolatile(item))
+  if (isPlainObject(value)) {
+    const result = {}
+    for (const [key, child] of Object.entries(value)) result[key] = unwrapVolatile(child)
+    return result
+  }
+  return value
+}
+
+/**
+ * Read the live configuration: unwrap volatile refs, then fill defaults.
+ * Call again after `loader/volatile-update` to pick up Settings edits.
+ * @param raw - validated configuration from the Loader.
+ * @returns a fresh plain configuration object.
+ */
+export function readConfig(raw) {
+  return resolveConfig(unwrapVolatile(raw))
+}

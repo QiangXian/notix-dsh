@@ -50,7 +50,7 @@ dsh 的 agent 在执行任务时，存在若干"需要用户关注"的时刻，�
 ### 2.1 插件形态与加载
 
 - 插件三种形态（cordis `registry.ts`）：函数 `(ctx, config)`、对象 `{ name?, inject?, Config?, apply(ctx, config) }`、类（通常 `extends Service`，`super(ctx, 'name')` 注册 `ctx.<name>`）。入口 `exports.default ?? exports`（loader `unwrapExports`）。Notix 用 **Service 子类**形态（参考 `dsh-schedule`）。
-- **Config**：`@deepseek-ai/schemastery` schema（实现 Standard Schema），启动前校验；`.default()` 给默认值；`.volatile()` 可标记可热更新字段；**本章实现未使用 volatile**：配置变更由 Loader 重载插件应用（保存设置后插件短暂重载，行为可预期）。
+- **Config**：`@deepseek-ai/schemastery` schema（实现 Standard Schema），启动前校验；`.default()` 给默认值；**所有可编辑叶子字段标记 `.volatile()`**——这是 dsh-settings 暴露设置命名空间（`volatileForm()`）的前提，且 Loader 会把 volatile-only 变更直接提交进运行中的 fiber（插件不重载），插件监听 `loader/volatile-update` 实时读取新值。
 - **生命周期**：`ctx.on(...)` 返回 disposer；`ctx.effect(fn, label)` 注册 cleanup-aware effect；随 fiber 卸载自动逆序清理（HMR 安全）。
 - **inject**：`static inject = [...]` 声明服务依赖，全部可用才加载。
 
@@ -97,7 +97,7 @@ Cordis dispatch 五模式：`emit`（同步广播）、`parallel`、`serial`、`
   - `configForms.get('<entryId>')` 拿到某个 Host 插件 entry 的**schema 驱动配置表单**（读镜像 + 写队列，schema 即插件的 schemastery Config）；
   - `configForms.whileServed(namespaces, register)`：Host 组合了该插件时才注册对应 UI；
   - 插件卡片挂在 **`plugins.item`** slot：`slots.register({ name: 'plugins.item', id: 'notix', order, label, locale, inject }, CardComponent)`（参考 `dsh-client-ui-settings-agent-loop` 的 AgentLoopCard）。
-- **推论**：Notix 的 Config schema 即设置页表单的单一事实源；配置保存后由 Loader 重载插件生效（实现未使用 volatile，保存即重载，行为可预期）。
+- **推论**：Notix 的 Config schema 即设置页表单的单一事实源；**字段必须标记 `.volatile()`，否则 `settings.describe()` 不会返回该命名空间，设置卡片也就不会出现**（这是实现期踩到的坑，已修复）；保存后经 Loader 的 volatile 提交通道即时生效，无需重载。
 
 ---
 
@@ -380,7 +380,7 @@ export default class NotixService extends Service {
 - 卡片注册：`slots.register({ name: 'plugins.item', id: 'notix', order, label, locale }, NotixCard)`；
 - 表单数据：`configForms.get('notix')` 得到 schema 驱动的 `ConfigFormController`（读镜像 + 写队列），保存经 `dsh-config-editor` 写入当前 profile 的 patch 并**立即生效**；`configForms.whileServed(['notix'], register)` 保证未安装 Host 插件时不出现卡片；
 - 表单分区：五类触发器的开关与阈值（滑块/数字输入）、静默时段、通知详细度、macOS 渠道开关；
-- 保存后由 Loader 重载 Notix 插件应用新配置（未使用 volatile）；UI 通过快照订阅自然回弹。
+- 所有叶子字段 `.volatile()`；保存后 Loader 把新值提交进运行中的 fiber（`loader/volatile-update`），插件调用 `readConfig()` 重读并原地更新配置对象，UI 通过快照订阅回显。
 
 ### 7.4 用户配置（YAML 兜底路径，与 UI 等价）
 
@@ -413,7 +413,7 @@ export default class NotixService extends Service {
 | 会话日志纯净 | 不 `session.append`。通知历史只进 `storageDomain`。 |
 | 隐私 | body 默认只含会话标题、工具名、问题摘要（截断 200 字符）；不含命令全文/文件内容。`verbosity: minimal（默认）\| normal`。系统通知内容同时受 macOS 通知中心隐私设置约束。 |
 | 计时器生命周期 | 全部 `ctx.timeout/ctx.interval`，随 fiber dispose 自动清理，HMR/卸载无残留。 |
-| HMR / 配置热更 | 配置经 Loader 重载应用（未用 volatile）；dispose 清空内存去重索引与队列；历史在 storageDomain 不丢。 |
+| HMR / 配置热更 | 可编辑字段全部 `.volatile()`，设置保存走 Loader 的 volatile 提交（不重载）；插件监听 `loader/volatile-update` → `readConfig()` 重读引用并原地更新；dispose 清空内存去重索引与队列；历史在 storageDomain 不丢。 |
 | 多端重复 | 同一 Host 进程一条事件总线，不重复；多 profile/实例各自通知（符合预期）。 |
 | 错误去重 | `agent/error` 与 `turn/end(reason=error)` 同源，同 `(sessionId, turn)` 合并；job `failed` 的 T4/T5 合并为一条。 |
 | 故障渠道 | 渠道失败互不影响；连续失败熔断 + history 标记。 |
@@ -449,6 +449,7 @@ export default class NotixService extends Service {
 | Settings UI（`notix-dsh-ui`） | ✅ 已实现（kimi-k3 设计与实现），bundle 契约冒烟通过 | `packages/notix-dsh-ui/`、`docs/ui-settings-design.md` |
 | 多渠道（webhook/lark/wecom/bark/ntfy） | 计划 M3，渠道注册表接口已就绪 | — |
 
-实现核对产生的两处设计修正：
+实现核对产生的三处设计修正：
 1. `userQuestions` 投影的 state 枚举实际为 `open` / `continued`（设计初稿写作 pending），触发器已按实际枚举实现；
-2. 通用 `job` 观看优先走 session 事件 `job/registered`/`job/settled`（实现取的是持久化事实，未依赖 `ctx.jobs.events.subscribe`，避免额外可选服务耦合；如需 output/progress 增量可作为 M3 增强）。
+2. 通用 `job` 观看优先走 session 事件 `job/registered`/`job/settled`（实现取的是持久化事实，未依赖 `ctx.jobs.events.subscribe`，避免额外可选服务耦合；如需 output/progress 增量可作为 M3 增强）；
+3. **设置卡片不出现的根因**：dsh-settings 的 `describe()` 只暴露含 `.volatile()` 字段的 Config（`volatileForm()` 过滤），初版 schema 没有 volatile → 命名空间被过滤 → `configForms.whileServed(['notix'])` 永不触发。已将所有可编辑叶子标为 `.volatile()`，并改造 `readConfig()`/`loader/volatile-update` 支持热更新。

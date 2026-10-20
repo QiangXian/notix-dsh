@@ -48,6 +48,8 @@ export class NotixCore {
     this.jobStarts = new Map()
     /** @type {Map<string, Set<string>>} sessionId → reasons the agent is blocked on the user */
     this.busy = new Map()
+    /** Disposer of the registered macOS channel, when enabled. */
+    this.macosRegistration = undefined
   }
 
   /**
@@ -84,9 +86,31 @@ export class NotixCore {
   /** Open persistence and register configured built-in channels. */
   async start() {
     await this.store.open()
-    if (this.config.channels.macos.enabled) {
-      this.channels.register(new MacosChannel(this.config.channels.macos, this.logger))
+    this.syncChannels()
+  }
+
+  /** Register or unregister built-in channels to match the live configuration. */
+  syncChannels() {
+    const macosEnabled = this.config.channels?.macos?.enabled === true
+    if (macosEnabled && this.macosRegistration === undefined) {
+      this.macosRegistration = this.channels.register(
+        new MacosChannel(() => this.config.channels.macos, this.logger),
+      )
+    } else if (!macosEnabled && this.macosRegistration !== undefined) {
+      this.macosRegistration()
+      this.macosRegistration = undefined
     }
+  }
+
+  /**
+   * Replace the resolved configuration in place after a volatile Settings edit.
+   * Triggers and channels read `this.config` at call time, so identity must stay.
+   * @param next - freshly resolved configuration from `readConfig()`.
+   */
+  replaceConfig(next) {
+    for (const key of Object.keys(this.config)) delete this.config[key]
+    Object.assign(this.config, next)
+    this.syncChannels()
   }
 
   /** Release persistence (timers/listeners are owned by the plugin fiber). */

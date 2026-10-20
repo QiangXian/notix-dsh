@@ -74,8 +74,12 @@ test('manual notifications go through the service API', async () => {
 test('the Loader schema applies defaults and rejects invalid values', async () => {
   const app = await createApp()
   try {
-    assert.equal(app.root.get('notix').config.triggers.longTask.turnThresholdMs, 600_000)
-    assert.equal(app.root.get('notix').config.channels.macos.enabled, false)
+    const config = app.root.get('notix').config
+    const value = (node) => (typeof node?.get === 'function' ? node.get() : node)
+    assert.equal(value(config.triggers.longTask.turnThresholdMs), 600_000)
+    assert.equal(value(config.channels.macos.enabled), false)
+    // Every editable leaf is volatile, so dsh-settings exposes the namespace.
+    assert.equal(value(config.triggers.approval.enabled), true)
   } finally {
     await app.root.fiber.dispose()
   }

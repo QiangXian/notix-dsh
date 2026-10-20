@@ -1,8 +1,22 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { resolveConfig } from '../lib/config.js'
+import { resolveConfig, readConfig, unwrapVolatile } from '../lib/config.js'
 import { renderNotification, formatDuration, truncate } from '../lib/core/render.js'
 import { createCore } from './mock.js'
+
+test('readConfig unwraps volatile references before applying defaults', () => {
+  const ref = (value) => Object.freeze({ get: () => value })
+  const raw = {
+    language: ref('en'),
+    triggers: { longTask: ref({ enabled: ref(false), turnThresholdMs: ref(120_000) }) },
+  }
+  const config = readConfig(raw)
+  assert.equal(config.language, 'en')
+  assert.equal(config.triggers.longTask.enabled, false)
+  assert.equal(config.triggers.longTask.turnThresholdMs, 120_000)
+  assert.equal(config.triggers.longTask.jobThresholdMs, 900_000)
+  assert.deepEqual(unwrapVolatile({ a: ref([1, ref(2)]) }), { a: [1, 2] })
+})
 
 test('resolveConfig fills defaults and keeps overrides', () => {
   const config = resolveConfig({ triggers: { longTask: { turnThresholdMs: 1000 } } })
