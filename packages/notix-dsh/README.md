@@ -97,11 +97,13 @@ Every field is optional; shipped defaults apply. Override in the profile's `cord
 | `triggers.userQuestion.maxReminders` | `2` | Reminder cap |
 | `triggers.userQuestion.remindOnContinued` | `true` | Re-notify when a timed question becomes pending |
 | `triggers.longTask.turnThresholdMs` | `600000` | Turn watchdog threshold |
+| `triggers.longTask.jobs` | `false` | Watch background jobs too (off by default) |
 | `triggers.longTask.jobThresholdMs` | `900000` | Background job watchdog threshold |
 | `triggers.error.cooldownMs` | `60000` | Per-session error notification cooldown |
 | `triggers.error.toolErrors` | `false` | Notify on failed tool results |
 | `triggers.error.toolTimeout` | `false` | Notify on `TOOL_TIMEOUT` specifically |
 | `triggers.completion.minDurationMs` | `180000` | Only long turns announce completion |
+| `triggers.completion.jobs` | `false` | Announce settled background jobs (off by default) |
 | `quietHours` | off | Empty window rules; `allowUrgent` lets approvals/questions through |
 | `channels.macos.baseUrl` | `""` | GUI URL opened by click-to-open helpers |
 | `channels.macos.notifierApp` | `""` → `~/Applications/Notix.app` | Notification helper app bundle |

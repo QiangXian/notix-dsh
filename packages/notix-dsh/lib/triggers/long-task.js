@@ -96,7 +96,7 @@ export function installLongTask(ctx, core) {
         const startedAt = Number(event.data.startedAt) || Date.now()
         const label = event.data.label ?? event.data.kind ?? 'job'
         core.beginJob(jobId, label)
-        if (!current.enabled || current.jobThresholdMs <= 0) return
+        if (!current.enabled || !current.jobs || current.jobThresholdMs <= 0) return
         const entry = { startedAt, sessionId, label }
         jobs.set(jobId, entry)
         watchJob(jobId, entry)

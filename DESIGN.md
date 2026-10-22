@@ -184,7 +184,7 @@ interface RawTriggerEvent {
 - `dedupeKey = longturn:{sessionId}:{turn}`，一个 turn 只提醒一次；`turn/end` 清计时器。
 - **防抖**：turn 内出现 `approval/asked` 或待答问题 → 暂停计时（阻塞原因已知，T1/T2 已覆盖），解除后按剩余阈值重新计时。
 
-**(b) job 级**（默认开，`jobThresholdMs = 15 min`）
+**(b) job 级**（默认**关**，`jobs` 开关打开后按 `jobThresholdMs = 15 min` 看门）
 - **首选 `ctx.jobs.events.subscribe({owners:'all'}, listener)`**：`registered` 起计时，`settled` 前到点触发；订阅接口还能拿到 `output/progress` 增量（后续可做"进度停滞"提醒）。
 - 降级：`session/event` 的 `job/registered` / `job/settled`。
 - `dedupeKey = longjob:{sessionId}:{jobId}`。
@@ -204,7 +204,7 @@ interface RawTriggerEvent {
 ### T5 任务完成（v1 纳入）
 
 - `turn/end` 且 `reason.kind === 'completed'`：仅当 turn 时长 ≥ `completionMinDurationMs`（默认 3 min）才通知（短交互不打扰）。默认**开**。
-- job `settled`：默认通知，payload 带终态 `completed / killed / failed` 与 `cause`。failed 同时命中 T4 时按 `(sessionId, jobId)` 合并为一条"失败"通知，不发两条。
+- job `settled`：默认**不通知**（`jobs` 开关，默认关）；开启后 payload 带终态 `completed / killed / failed` 与 `cause`。failed 同时命中 T4 时按 `(sessionId, jobId)` 合并为一条"失败"通知，不发两条。
 
 ### 触发器统一配置（每类五元组）
 
@@ -345,14 +345,15 @@ export default class NotixService extends Service {
                                remindOnContinued: z.boolean().default(true) }).default({}),
       longTask:     z.object({ enabled: z.boolean().default(true),
                                turnThresholdMs: z.number().default(600_000),
-                               jobThresholdMs:  z.number().default(900_000) }).default({}),
+                               jobThresholdMs:  z.number().default(900_000),
+                               jobs: z.boolean().default(false) }).default({}),
       error:        z.object({ enabled: z.boolean().default(true),
                                cooldownMs: z.number().default(60_000),
                                toolErrors: z.boolean().default(false),
                                toolTimeout: z.boolean().default(false) }).default({}),
       completion:   z.object({ enabled: z.boolean().default(true),
                                minDurationMs: z.number().default(180_000),
-                               jobs: z.boolean().default(true) }).default({}),
+                               jobs: z.boolean().default(false) }).default({}),
     }).default({}),
     quietHours: z.object({ enabled: z.boolean().default(false),
                            from: z.string().default('23:00'), to: z.string().default('08:00'),

@@ -145,9 +145,12 @@ test('short turns do not notify completion', async () => {
     assert.equal(notifications.length, 0)
 })
 
-test('settled background jobs notify completion', async () => {
+test('settled background jobs notify completion when job notifications are enabled', async () => {
     const session = createSession('s1', 'deploy')
-    const { core, ctx, notifications, clock } = await createCore({ sessions: [session] })
+    const { core, ctx, notifications, clock } = await createCore({
+      sessions: [session],
+      config: { triggers: { completion: { jobs: true } } },
+    })
     installTriggers(ctx, core)
     ctx.emitSession(session, {
       type: 'job/registered',
@@ -161,6 +164,53 @@ test('settled background jobs notify completion', async () => {
     await flush(core)
     assert.equal(notifications.length, 1)
     assert.match(notifications[0].title, /后台任务结束/)
+})
+
+test('settled background jobs stay silent by default', async () => {
+    const session = createSession('s1', 'deploy')
+    const { core, ctx, notifications, clock } = await createCore({ sessions: [session] })
+    installTriggers(ctx, core)
+    ctx.emitSession(session, {
+      type: 'job/registered',
+      data: { jobId: 'j1', kind: 'bash', label: 'pnpm build', startedAt: Date.now() },
+    })
+    clock.advance(60_000)
+    ctx.emitSession(session, {
+      type: 'job/settled',
+      data: { jobId: 'j1', kind: 'bash', label: 'pnpm build', status: 'completed' },
+    })
+    await flush(core)
+    assert.equal(notifications.length, 0)
+})
+
+test('job watchdog stays off by default and fires when jobs are enabled', async () => {
+    const session = createSession('s1', 'deploy')
+    const quiet = await createCore({
+      sessions: [session],
+      config: { triggers: { longTask: { turnThresholdMs: 0, jobThresholdMs: 1000 } } },
+    })
+    installTriggers(quiet.ctx, quiet.core)
+    quiet.ctx.emitSession(session, {
+      type: 'job/registered',
+      data: { jobId: 'j1', kind: 'bash', label: 'pnpm build', startedAt: Date.now() },
+    })
+    quiet.ctx.advance(10_000)
+    await flush(quiet.core)
+    assert.equal(quiet.notifications.filter((n) => n.kind === 'long-task').length, 0, 'jobs off by default: no watchdog')
+
+    const session2 = createSession('s2', 'deploy')
+    const loud = await createCore({
+      sessions: [session2],
+      config: { triggers: { longTask: { turnThresholdMs: 0, jobThresholdMs: 1000, jobs: true } } },
+    })
+    installTriggers(loud.ctx, loud.core)
+    loud.ctx.emitSession(session2, {
+      type: 'job/registered',
+      data: { jobId: 'j2', kind: 'bash', label: 'pnpm build', startedAt: Date.now() },
+    })
+    loud.ctx.advance(1000)
+    await flush(loud.core)
+    assert.equal(loud.notifications.filter((n) => n.kind === 'long-task').length, 1, 'jobs on: watchdog fires')
 })
 
 

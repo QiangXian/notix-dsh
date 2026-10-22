@@ -92,11 +92,13 @@ dsh plugin --profile web add link:/绝对路径/packages/notix-dsh
 | `triggers.userQuestion.maxReminders` | `2` | 重复提醒上限 |
 | `triggers.userQuestion.remindOnContinued` | `true` | 超时转为 pending 时再提醒一次 |
 | `triggers.longTask.turnThresholdMs` | `600000` | turn 看门狗阈值 |
+| `triggers.longTask.jobs` | `false` | 是否同时看门后台任务（默认关闭） |
 | `triggers.longTask.jobThresholdMs` | `900000` | 后台任务看门狗阈值 |
 | `triggers.error.cooldownMs` | `60000` | 错误通知按会话冷却 |
 | `triggers.error.toolErrors` | `false` | 是否通知工具失败 |
 | `triggers.error.toolTimeout` | `false` | 是否单独通知 `TOOL_TIMEOUT` |
 | `triggers.completion.minDurationMs` | `180000` | 仅长 turn 播报完成 |
+| `triggers.completion.jobs` | `false` | 是否播报后台任务结束（默认关闭） |
 | `quietHours` | 关 | 免打扰时段；`allowUrgent` 让审批/提问穿透 |
 | `channels.macos.baseUrl` | `""` | 点击通知跳转的 GUI URL |
 | `channels.macos.notifierApp` | `""`（`~/Applications/Notix.app`） | 通知助手 App 路径 |

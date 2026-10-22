@@ -57,6 +57,7 @@ export function buildSchema(z) {
           enabled: z.boolean().default(true).volatile(),
           turnThresholdMs: z.number().step(1).min(0).default(600_000).volatile(),
           jobThresholdMs: z.number().step(1).min(0).default(900_000).volatile(),
+          jobs: z.boolean().default(false).volatile(),
         })
         .default({}),
       error: z
@@ -71,7 +72,7 @@ export function buildSchema(z) {
         .object({
           enabled: z.boolean().default(true).volatile(),
           minDurationMs: z.number().step(1).min(0).default(180_000).volatile(),
-          jobs: z.boolean().default(true).volatile(),
+          jobs: z.boolean().default(false).volatile(),
         })
         .default({}),
     })

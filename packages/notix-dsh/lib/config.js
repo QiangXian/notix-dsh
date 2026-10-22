@@ -33,6 +33,7 @@ export const DEFAULTS = Object.freeze({
       enabled: true,
       turnThresholdMs: 600_000,
       jobThresholdMs: 900_000,
+      jobs: false,
     }),
     error: Object.freeze({
       enabled: true,
@@ -43,7 +44,7 @@ export const DEFAULTS = Object.freeze({
     completion: Object.freeze({
       enabled: true,
       minDurationMs: 180_000,
-      jobs: true,
+      jobs: false,
     }),
   }),
   channels: Object.freeze({
