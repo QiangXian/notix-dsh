@@ -45,7 +45,7 @@ window.__ModuleLoader__.load({
 			fieldCooldown: "Cooldown (min)",
 			fieldToolErrors: "Tool errors",
 			fieldToolTimeout: "Tool timeouts",
-			fieldMinDuration: "Minimum duration (min)",
+			fieldMinDuration: "Completion notification min duration (min)",
 			fieldJobs: "Include background jobs",
 			quietEnabled: "Enable quiet hours",
 			quietFrom: "From",
@@ -104,7 +104,7 @@ window.__ModuleLoader__.load({
 			fieldCooldown: "冷却时间（分钟）",
 			fieldToolErrors: "工具错误",
 			fieldToolTimeout: "工具超时",
-			fieldMinDuration: "最短时长（分钟）",
+			fieldMinDuration: "任务完成通知最短时长（分钟）",
 			fieldJobs: "包含后台任务",
 			quietEnabled: "启用免打扰时段",
 			quietFrom: "开始",
@@ -127,8 +127,55 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region lib/client/styles.js
-		/** One small stylesheet for the card, injected once like other client plugins do. */
-		const CSS = ".notix-card .notix-summary{opacity:.75;font-size:12px;line-height:18px;margin:0 0 8px}.notix-card .notix-section{margin-top:14px}.notix-card .notix-section-title{font-weight:600;font-size:13px;margin:0 0 6px}.notix-card .notix-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:4px 0}.notix-card .notix-field{display:inline-flex;align-items:center;gap:6px;font-size:13px}.notix-card .notix-field input[type=number]{width:84px}.notix-card .notix-sub{margin-left:24px;display:flex;flex-direction:column;gap:2px}.notix-card .notix-sub-disabled{opacity:.55}.notix-card .notix-hint{opacity:.6;font-size:12px}.notix-card .notix-status{margin-top:14px;font-size:12px;line-height:18px;min-height:18px}.notix-card .notix-status-error{color:var(--dsw-alias-state-error-primary, #d03050)}.notix-card .notix-invalid{color:var(--dsw-alias-state-error-primary, #d03050);font-size:12px}.notix-card .notix-test-button{border:.5px solid var(--dsw-alias-border-l2, #8884);border-radius:6px;color:inherit;opacity:.55;cursor:not-allowed;background:0 0;font:inherit;font-size:12px;padding:3px 10px}";
+		/**
+		* One small stylesheet for the card, injected once like other client plugins
+		* do. The layout mirrors the built-in settings pages: sections are titled
+		* groups of `.5px`-stroked cards (settings-models' rowCard), each trigger is
+		* a "label + description left, switch right" row (settings-general's
+		* DeveloperToolsRow), and sub-fields are "label left, control right" rows
+		* with SettingsValueField-style inputs. Colors come from theme variables
+		* only, so the card follows light/dark themes.
+		*/
+		const CSS = [
+			".notix-card{box-sizing:border-box;max-width:640px;color:var(--dsw-alias-label-primary);flex-direction:column;gap:24px;font-size:13px;line-height:1.5;display:flex}",
+			".notix-card *{box-sizing:border-box}",
+			".notix-summary{color:var(--dsw-alias-label-tertiary);margin:0;font-size:12px;line-height:18px}",
+			".notix-section{flex-direction:column;gap:10px;display:flex}",
+			".notix-section-title{color:var(--dsw-alias-label-primary);margin:0;font-size:15px;font-weight:600;line-height:22px}",
+			".notix-group{border:.5px solid var(--dsw-alias-settings-card-stroke,var(--dsw-alias-border-l2));border-radius:var(--dsw-radius-xl,12px);background:var(--dsw-alias-settings-card-fill,transparent);padding:0 14px}",
+			".notix-trigger{padding:12px 0}",
+			".notix-trigger+.notix-trigger{border-top:.5px solid var(--dsw-alias-border-l2)}",
+			".notix-trigger-head{justify-content:space-between;align-items:flex-start;gap:16px;display:flex}",
+			".notix-trigger-text{flex:1;min-width:0}",
+			".notix-trigger-title{font-size:13px;font-weight:500;line-height:20px;color:var(--dsw-alias-label-primary)}",
+			".notix-trigger-hint{margin-top:2px;font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary)}",
+			".notix-fields{flex-direction:column;display:flex}",
+			".notix-trigger .notix-fields{margin-top:4px}",
+			".notix-group>.notix-fields{padding:6px 0}",
+			".notix-fields-disabled{opacity:.55}",
+			".notix-field{flex-direction:column;gap:2px;padding:4px 0;display:flex}",
+			".notix-field-row{justify-content:space-between;align-items:center;gap:16px;min-height:32px;padding:4px 0;display:flex}",
+			".notix-field-label{flex:1;min-width:0;font-size:13px;line-height:20px;color:var(--dsw-alias-label-secondary)}",
+			".notix-field-message{margin:0;font-size:12px;line-height:18px}",
+			".notix-field-error{color:var(--dsw-alias-state-error-primary,#d03050)}",
+			".notix-field-hint{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}",
+			".notix-input{height:28px;border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-md,6px);background:var(--dsw-alias-bg-layer-3,transparent);padding:0 10px;font:inherit;font-size:13px;line-height:20px;color:var(--dsw-alias-label-primary);outline:none}",
+			".notix-input::placeholder{color:var(--dsw-alias-label-dimmed,var(--dsw-alias-label-tertiary))}",
+			".notix-input:focus-visible{border-color:var(--dsw-alias-state-business-primary,#3b6ef6)}",
+			".notix-input:disabled{opacity:.6;cursor:default}",
+			".notix-input[aria-invalid=true]{border-color:var(--dsw-alias-state-error-primary,#d03050)}",
+			".notix-input-num{flex:none;width:88px;text-align:right;font-variant-numeric:tabular-nums}",
+			".notix-input-time{flex:none;width:120px;font-variant-numeric:tabular-nums}",
+			".notix-input-select{flex:none;min-width:120px}",
+			".notix-input-text{flex:1;min-width:0;max-width:360px}",
+			".notix-test-button{flex:none;height:28px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md,6px);color:var(--dsw-alias-label-primary);background:0 0;padding:0 12px;font:inherit;font-size:13px;line-height:20px;cursor:pointer}",
+			".notix-test-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}",
+			".notix-test-button:disabled{opacity:.5;cursor:default}",
+			".notix-status{flex-wrap:wrap;align-items:baseline;gap:4px 12px;min-height:18px;border-top:.5px solid var(--dsw-alias-border-l2);padding-top:12px;font-size:12px;line-height:18px;display:flex}",
+			".notix-status-error{color:var(--dsw-alias-state-error-primary,#d03050)}",
+			".notix-status-saved{color:var(--dsw-alias-state-success-primary,#2ba471)}",
+			".notix-status-note{margin-left:auto;color:var(--dsw-alias-label-tertiary)}"
+		].join(" ");
 		const CSS_TAG = "notix-dsh-ui/card.css";
 		function injectStyles() {
 			if (typeof document === "undefined") return;
@@ -142,6 +189,7 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region lib/client/fields.js
 		const h = react.createElement;
+		const Switch = _deepseek_ai_dsh_client_ui_primitives.Switch;
 		const MS_PER_MINUTE = 60000;
 		/** Subscribe to the config form snapshot and re-render on every change. */
 		function useSnapshot(form) {
@@ -162,17 +210,45 @@ window.__ModuleLoader__.load({
 			}, [display]);
 			return { text, setText, editing };
 		}
-		/** A labelled switch row backed by the shared Switch primitive. */
-		function SwitchRow(props) {
-			return h("div", { className: "notix-row" }, h(_deepseek_ai_dsh_client_ui_primitives.Switch, {
+		/**
+		* A group's master toggle: title + description on the left, the shared
+		* Switch on the right — the row shape settings-general uses.
+		*/
+		function TriggerRow(props) {
+			return h("div", { className: "notix-trigger-head" }, h("div", { className: "notix-trigger-text" }, h("div", { className: "notix-trigger-title" }, props.title), props.hint ? h("div", { className: "notix-trigger-hint" }, props.hint) : null), h(Switch, {
+				checked: props.checked,
+				label: props.title,
+				disabled: props.disabled,
+				onChange: (next) => props.onChange(next)
+			}));
+		}
+		/**
+		* One trigger group inside a section card: the master row plus its
+		* sub-fields, which stay visible but disabled while the group is off.
+		*/
+		function Trigger(props) {
+			return h("div", { className: "notix-trigger" }, h(TriggerRow, {
+				title: props.title,
+				hint: props.hint,
+				checked: props.checked,
+				disabled: props.disabled,
+				onChange: props.onChange
+			}), props.fields && props.fields.length > 0 ? h("div", {
+				className: props.checked ? "notix-fields" : "notix-fields notix-fields-disabled"
+			}, props.fields) : null);
+		}
+		/** A sub-item toggle: secondary label on the left, Switch on the right. */
+		function ToggleField(props) {
+			return h("div", { className: "notix-field-row" }, h("span", { className: "notix-field-label" }, props.label), h(Switch, {
 				checked: props.checked,
 				label: props.label,
 				disabled: props.disabled,
 				onChange: (next) => props.onChange(next)
-			}), props.hint ? h("span", { className: "notix-hint" }, props.hint) : null);
+			}));
 		}
 		/**
-		* Generic numeric input with draft/commit behaviour.
+		* Generic numeric input with draft/commit behaviour, styled like the
+		* built-in SettingsValueField input.
 		* format(value) -> shown text; parse(text) -> committed value or null when invalid.
 		*/
 		function NumberField(props) {
@@ -190,14 +266,13 @@ window.__ModuleLoader__.load({
 				draft.setText(props.format(parsed));
 				if (parsed !== props.value) props.onCommit(parsed);
 			};
-			return h("label", { className: "notix-field", htmlFor: props.id }, h("span", null, props.label), h("input", {
+			return h("div", { className: "notix-field" }, h("label", { className: "notix-field-row", htmlFor: props.id }, h("span", { className: "notix-field-label" }, props.label), h("input", {
 				id: props.id,
-				type: "number",
+				className: "notix-input notix-input-num",
+				type: "text",
+				inputMode: props.integer ? "numeric" : "decimal",
 				disabled: props.disabled,
 				value: draft.text,
-				min: props.min,
-				max: props.max,
-				step: props.step === undefined ? "any" : props.step,
 				"aria-label": props.label,
 				...invalid ? { "aria-invalid": true, "aria-describedby": messageId } : {},
 				onFocus: () => {
@@ -218,13 +293,12 @@ window.__ModuleLoader__.load({
 						if (props.parse(draft.text) !== null) event.target.blur();
 					}
 				}
-			}), invalid ? h("span", { id: messageId, className: "notix-invalid", role: "alert" }, props.invalidLabel) : props.hint ? h("span", { className: "notix-hint" }, props.hint) : null);
+			})), invalid ? h("p", { id: messageId, className: "notix-field-message notix-field-error", role: "alert" }, props.invalidLabel) : props.hint ? h("p", { className: "notix-field-message notix-field-hint" }, props.hint) : null);
 		}
 		/** Millisecond-valued duration edited in minutes. */
 		function MinutesField(props) {
 			return h(NumberField, {
 				...props,
-				min: 0,
 				format: (ms) => String(Math.round((ms / MS_PER_MINUTE) * 100) / 100),
 				parse: (text) => {
 					const n = Number(text);
@@ -237,9 +311,7 @@ window.__ModuleLoader__.load({
 		function CountField(props) {
 			return h(NumberField, {
 				...props,
-				min: 0,
-				max: 10,
-				step: 1,
+				integer: true,
 				format: (n) => String(n),
 				parse: (text) => {
 					const n = Number(text);
@@ -252,8 +324,9 @@ window.__ModuleLoader__.load({
 		}
 		/** "HH:MM" time-of-day field. */
 		function TimeField(props) {
-			return h("label", { className: "notix-field", htmlFor: props.id }, h("span", null, props.label), h("input", {
+			return h("label", { className: "notix-field-row", htmlFor: props.id }, h("span", { className: "notix-field-label" }, props.label), h("input", {
 				id: props.id,
+				className: "notix-input notix-input-time",
 				type: "time",
 				disabled: props.disabled,
 				value: props.value,
@@ -266,8 +339,9 @@ window.__ModuleLoader__.load({
 		}
 		/** Enum dropdown. options: [{ value, label }]. */
 		function SelectField(props) {
-			return h("label", { className: "notix-field", htmlFor: props.id }, h("span", null, props.label), h("select", {
+			return h("label", { className: "notix-field-row", htmlFor: props.id }, h("span", { className: "notix-field-label" }, props.label), h("select", {
 				id: props.id,
+				className: "notix-input notix-input-select",
 				disabled: props.disabled,
 				value: props.value,
 				"aria-label": props.label,
@@ -280,8 +354,9 @@ window.__ModuleLoader__.load({
 			const commitText = () => {
 				if (draft.text !== props.value) props.onCommit(draft.text);
 			};
-			return h("label", { className: "notix-field", htmlFor: props.id }, h("span", null, props.label), h("input", {
+			return h("div", { className: "notix-field" }, h("label", { className: "notix-field-row", htmlFor: props.id }, h("span", { className: "notix-field-label" }, props.label), h("input", {
 				id: props.id,
+				className: "notix-input notix-input-text",
 				type: "text",
 				disabled: props.disabled,
 				value: draft.text,
@@ -302,11 +377,11 @@ window.__ModuleLoader__.load({
 						event.target.blur();
 					}
 				}
-			}), props.hint ? h("span", { className: "notix-hint" }, props.hint) : null);
+			})), props.hint ? h("p", { className: "notix-field-message notix-field-hint" }, props.hint) : null);
 		}
-		/** Section frame with a heading. */
+		/** Section frame: a title above one stroked group card. */
 		function Section(props) {
-			return h("section", { className: "notix-section" }, h("h3", { className: "notix-section-title" }, props.title), props.children);
+			return h("section", { className: "notix-section" }, h("h3", { className: "notix-section-title" }, props.title), h("div", { className: "notix-group" }, props.children));
 		}
 		//#endregion
 		//#region lib/client/NotixCard.js
@@ -318,9 +393,9 @@ window.__ModuleLoader__.load({
 			triggers: {
 				approval: { enabled: true, remindAfterMs: 300000, maxReminders: 2 },
 				userQuestion: { enabled: true, remindAfterMs: 300000, remindOnContinued: true },
-				longTask: { enabled: true, turnThresholdMs: 600000, jobThresholdMs: 900000 },
+				longTask: { enabled: true, turnThresholdMs: 600000, jobThresholdMs: 900000, jobs: false },
 				error: { enabled: true, cooldownMs: 60000, toolErrors: false, toolTimeout: false },
-				completion: { enabled: true, minDurationMs: 180000, jobs: true }
+				completion: { enabled: true, minDurationMs: 180000, jobs: false }
 			},
 			macos: { enabled: true, sound: true, clickToOpen: true, baseUrl: "" }
 		};
@@ -384,162 +459,175 @@ window.__ModuleLoader__.load({
 			const completion = group(triggers.completion, DEFAULTS.triggers.completion);
 			const macos = group((v.channels || {}).macos, DEFAULTS.macos);
 			const enabledCount = [approval, userQuestion, longTask, errorTrig, completion].filter((g) => g.enabled).length;
-			const sub = (enabledFlag, children) => h("div", {
-				className: enabledFlag ? "notix-sub" : "notix-sub notix-sub-disabled"
-			}, children);
-			return h("div", { className: "notix-card" }, h("p", { className: "notix-summary" }, `${t("summaryTriggers")}: ${enabledCount}/5 · ${t("summaryQuietHours")}: ${quiet.enabled ? t("summaryOn") : t("summaryOff")} · ${t("summaryChannel")}: ${macos.enabled ? t("summaryOn") : t("summaryOff")}`), h(Section, { title: t("sectionTriggers") }, h(SwitchRow, {
-				label: t("triggerApproval"),
+			return h("div", { className: "notix-card" }, h("p", { className: "notix-summary" }, `${t("summaryTriggers")}: ${enabledCount}/5 · ${t("summaryQuietHours")}: ${quiet.enabled ? t("summaryOn") : t("summaryOff")} · ${t("summaryChannel")}: ${macos.enabled ? t("summaryOn") : t("summaryOff")}`), h(Section, { title: t("sectionTriggers") }, h(Trigger, {
+				title: t("triggerApproval"),
 				hint: t("triggerApprovalHint"),
 				checked: approval.enabled,
 				disabled,
-				onChange: (next) => commit(["triggers", "approval", "enabled"], next)
-			}), sub(approval.enabled, [
-				h(MinutesField, {
-					key: "approval-remind",
-					id: "notix-approval-remind",
-					label: t("fieldRemindAfter"),
-					invalidLabel: t("invalidNumber"),
-					value: approval.remindAfterMs,
-					disabled: disabled || !approval.enabled,
-					onCommit: (ms) => commit(["triggers", "approval", "remindAfterMs"], ms)
-				}),
-				h(CountField, {
-					key: "approval-max",
-					id: "notix-approval-max",
-					label: t("fieldMaxReminders"),
-					invalidLabel: t("invalidNumber"),
-					value: approval.maxReminders,
-					disabled: disabled || !approval.enabled,
-					onCommit: (n) => commit(["triggers", "approval", "maxReminders"], n)
-				})
-			]), h(SwitchRow, {
-				label: t("triggerUserQuestion"),
+				onChange: (next) => commit(["triggers", "approval", "enabled"], next),
+				fields: [
+					h(MinutesField, {
+						key: "approval-remind",
+						id: "notix-approval-remind",
+						label: t("fieldRemindAfter"),
+						invalidLabel: t("invalidNumber"),
+						value: approval.remindAfterMs,
+						disabled: disabled || !approval.enabled,
+						onCommit: (ms) => commit(["triggers", "approval", "remindAfterMs"], ms)
+					}),
+					h(CountField, {
+						key: "approval-max",
+						id: "notix-approval-max",
+						label: t("fieldMaxReminders"),
+						invalidLabel: t("invalidNumber"),
+						value: approval.maxReminders,
+						disabled: disabled || !approval.enabled,
+						onCommit: (n) => commit(["triggers", "approval", "maxReminders"], n)
+					})
+				]
+			}), h(Trigger, {
+				title: t("triggerUserQuestion"),
 				hint: t("triggerUserQuestionHint"),
 				checked: userQuestion.enabled,
 				disabled,
-				onChange: (next) => commit(["triggers", "userQuestion", "enabled"], next)
-			}), sub(userQuestion.enabled, [
-				h(MinutesField, {
-					key: "uq-remind",
-					id: "notix-uq-remind",
-					label: t("fieldRemindAfter"),
-					invalidLabel: t("invalidNumber"),
-					value: userQuestion.remindAfterMs,
-					disabled: disabled || !userQuestion.enabled,
-					onCommit: (ms) => commit(["triggers", "userQuestion", "remindAfterMs"], ms)
-				}),
-				h(SwitchRow, {
-					key: "uq-continued",
-					label: t("fieldRemindOnContinued"),
-					checked: userQuestion.remindOnContinued,
-					disabled: disabled || !userQuestion.enabled,
-					onChange: (next) => commit(["triggers", "userQuestion", "remindOnContinued"], next)
-				})
-			]), h(SwitchRow, {
-				label: t("triggerLongTask"),
+				onChange: (next) => commit(["triggers", "userQuestion", "enabled"], next),
+				fields: [
+					h(MinutesField, {
+						key: "uq-remind",
+						id: "notix-uq-remind",
+						label: t("fieldRemindAfter"),
+						invalidLabel: t("invalidNumber"),
+						value: userQuestion.remindAfterMs,
+						disabled: disabled || !userQuestion.enabled,
+						onCommit: (ms) => commit(["triggers", "userQuestion", "remindAfterMs"], ms)
+					}),
+					h(ToggleField, {
+						key: "uq-continued",
+						label: t("fieldRemindOnContinued"),
+						checked: userQuestion.remindOnContinued,
+						disabled: disabled || !userQuestion.enabled,
+						onChange: (next) => commit(["triggers", "userQuestion", "remindOnContinued"], next)
+					})
+				]
+			}), h(Trigger, {
+				title: t("triggerLongTask"),
 				hint: t("triggerLongTaskHint"),
 				checked: longTask.enabled,
 				disabled,
-				onChange: (next) => commit(["triggers", "longTask", "enabled"], next)
-			}), sub(longTask.enabled, [
-				h(MinutesField, {
-					key: "lt-turn",
-					id: "notix-lt-turn",
-					label: t("fieldTurnThreshold"),
-					invalidLabel: t("invalidNumber"),
-					value: longTask.turnThresholdMs,
-					disabled: disabled || !longTask.enabled,
-					onCommit: (ms) => commit(["triggers", "longTask", "turnThresholdMs"], ms)
-				}),
-				h(MinutesField, {
-					key: "lt-job",
-					id: "notix-lt-job",
-					label: t("fieldJobThreshold"),
-					invalidLabel: t("invalidNumber"),
-					value: longTask.jobThresholdMs,
-					disabled: disabled || !longTask.enabled,
-					onCommit: (ms) => commit(["triggers", "longTask", "jobThresholdMs"], ms)
-				})
-			]), h(SwitchRow, {
-				label: t("triggerError"),
+				onChange: (next) => commit(["triggers", "longTask", "enabled"], next),
+				fields: [
+					h(MinutesField, {
+						key: "lt-turn",
+						id: "notix-lt-turn",
+						label: t("fieldTurnThreshold"),
+						invalidLabel: t("invalidNumber"),
+						value: longTask.turnThresholdMs,
+						disabled: disabled || !longTask.enabled,
+						onCommit: (ms) => commit(["triggers", "longTask", "turnThresholdMs"], ms)
+					}),
+					h(ToggleField, {
+						key: "lt-jobs",
+						label: t("fieldJobs"),
+						checked: longTask.jobs,
+						disabled: disabled || !longTask.enabled,
+						onChange: (next) => commit(["triggers", "longTask", "jobs"], next)
+					}),
+					h(MinutesField, {
+						key: "lt-job",
+						id: "notix-lt-job",
+						label: t("fieldJobThreshold"),
+						invalidLabel: t("invalidNumber"),
+						value: longTask.jobThresholdMs,
+						disabled: disabled || !longTask.enabled || !longTask.jobs,
+						onCommit: (ms) => commit(["triggers", "longTask", "jobThresholdMs"], ms)
+					})
+				]
+			}), h(Trigger, {
+				title: t("triggerError"),
 				hint: t("triggerErrorHint"),
 				checked: errorTrig.enabled,
 				disabled,
-				onChange: (next) => commit(["triggers", "error", "enabled"], next)
-			}), sub(errorTrig.enabled, [
-				h(MinutesField, {
-					key: "err-cooldown",
-					id: "notix-err-cooldown",
-					label: t("fieldCooldown"),
-					invalidLabel: t("invalidNumber"),
-					value: errorTrig.cooldownMs,
-					disabled: disabled || !errorTrig.enabled,
-					onCommit: (ms) => commit(["triggers", "error", "cooldownMs"], ms)
-				}),
-				h(SwitchRow, {
-					key: "err-tool",
-					label: t("fieldToolErrors"),
-					checked: errorTrig.toolErrors,
-					disabled: disabled || !errorTrig.enabled,
-					onChange: (next) => commit(["triggers", "error", "toolErrors"], next)
-				}),
-				h(SwitchRow, {
-					key: "err-timeout",
-					label: t("fieldToolTimeout"),
-					checked: errorTrig.toolTimeout,
-					disabled: disabled || !errorTrig.enabled,
-					onChange: (next) => commit(["triggers", "error", "toolTimeout"], next)
-				})
-			]), h(SwitchRow, {
-				label: t("triggerCompletion"),
+				onChange: (next) => commit(["triggers", "error", "enabled"], next),
+				fields: [
+					h(MinutesField, {
+						key: "err-cooldown",
+						id: "notix-err-cooldown",
+						label: t("fieldCooldown"),
+						invalidLabel: t("invalidNumber"),
+						value: errorTrig.cooldownMs,
+						disabled: disabled || !errorTrig.enabled,
+						onCommit: (ms) => commit(["triggers", "error", "cooldownMs"], ms)
+					}),
+					h(ToggleField, {
+						key: "err-tool",
+						label: t("fieldToolErrors"),
+						checked: errorTrig.toolErrors,
+						disabled: disabled || !errorTrig.enabled,
+						onChange: (next) => commit(["triggers", "error", "toolErrors"], next)
+					}),
+					h(ToggleField, {
+						key: "err-timeout",
+						label: t("fieldToolTimeout"),
+						checked: errorTrig.toolTimeout,
+						disabled: disabled || !errorTrig.enabled,
+						onChange: (next) => commit(["triggers", "error", "toolTimeout"], next)
+					})
+				]
+			}), h(Trigger, {
+				title: t("triggerCompletion"),
 				hint: t("triggerCompletionHint"),
 				checked: completion.enabled,
 				disabled,
-				onChange: (next) => commit(["triggers", "completion", "enabled"], next)
-			}), sub(completion.enabled, [
-				h(MinutesField, {
-					key: "cmp-min",
-					id: "notix-cmp-min",
-					label: t("fieldMinDuration"),
-					invalidLabel: t("invalidNumber"),
-					value: completion.minDurationMs,
-					disabled: disabled || !completion.enabled,
-					onCommit: (ms) => commit(["triggers", "completion", "minDurationMs"], ms)
-				}),
-				h(SwitchRow, {
-					key: "cmp-jobs",
-					label: t("fieldJobs"),
-					checked: completion.jobs,
-					disabled: disabled || !completion.enabled,
-					onChange: (next) => commit(["triggers", "completion", "jobs"], next)
-				})
-			])), h(Section, { title: t("sectionQuietHours") }, h(SwitchRow, {
-				label: t("quietEnabled"),
+				onChange: (next) => commit(["triggers", "completion", "enabled"], next),
+				fields: [
+					h(MinutesField, {
+						key: "cmp-min",
+						id: "notix-cmp-min",
+						label: t("fieldMinDuration"),
+						invalidLabel: t("invalidNumber"),
+						value: completion.minDurationMs,
+						disabled: disabled || !completion.enabled,
+						onCommit: (ms) => commit(["triggers", "completion", "minDurationMs"], ms)
+					}),
+					h(ToggleField, {
+						key: "cmp-jobs",
+						label: t("fieldJobs"),
+						checked: completion.jobs,
+						disabled: disabled || !completion.enabled,
+						onChange: (next) => commit(["triggers", "completion", "jobs"], next)
+					})
+				]
+			})), h(Section, { title: t("sectionQuietHours") }, h(Trigger, {
+				title: t("quietEnabled"),
 				checked: quiet.enabled,
 				disabled,
-				onChange: (next) => commit(["quietHours", "enabled"], next)
-			}), sub(quiet.enabled, [
-				h("div", { key: "qh-times", className: "notix-row" }, h(TimeField, {
-					id: "notix-qh-from",
-					label: t("quietFrom"),
-					value: quiet.from,
-					disabled: disabled || !quiet.enabled,
-					onCommit: (v2) => commit(["quietHours", "from"], v2)
-				}), h(TimeField, {
-					id: "notix-qh-to",
-					label: t("quietTo"),
-					value: quiet.to,
-					disabled: disabled || !quiet.enabled,
-					onCommit: (v2) => commit(["quietHours", "to"], v2)
-				})),
-				h(SwitchRow, {
-					key: "qh-urgent",
-					label: t("quietAllowUrgent"),
-					checked: quiet.allowUrgent,
-					disabled: disabled || !quiet.enabled,
-					onChange: (next) => commit(["quietHours", "allowUrgent"], next)
-				})
-			])), h(Section, { title: t("sectionContent") }, h("div", { className: "notix-row" }, h(SelectField, {
+				onChange: (next) => commit(["quietHours", "enabled"], next),
+				fields: [
+					h(TimeField, {
+						key: "qh-from",
+						id: "notix-qh-from",
+						label: t("quietFrom"),
+						value: quiet.from,
+						disabled: disabled || !quiet.enabled,
+						onCommit: (v2) => commit(["quietHours", "from"], v2)
+					}),
+					h(TimeField, {
+						key: "qh-to",
+						id: "notix-qh-to",
+						label: t("quietTo"),
+						value: quiet.to,
+						disabled: disabled || !quiet.enabled,
+						onCommit: (v2) => commit(["quietHours", "to"], v2)
+					}),
+					h(ToggleField, {
+						key: "qh-urgent",
+						label: t("quietAllowUrgent"),
+						checked: quiet.allowUrgent,
+						disabled: disabled || !quiet.enabled,
+						onChange: (next) => commit(["quietHours", "allowUrgent"], next)
+					})
+				]
+			})), h(Section, { title: t("sectionContent") }, h("div", { className: "notix-fields" }, h(SelectField, {
 				id: "notix-language",
 				label: t("fieldLanguage"),
 				value: pick(v.language, DEFAULTS.language),
@@ -559,49 +647,50 @@ window.__ModuleLoader__.load({
 					{ value: "normal", label: t("verbosityNormal") }
 				],
 				onCommit: (v2) => commit(["verbosity"], v2)
-			}))), h(Section, { title: t("sectionChannel") }, h(SwitchRow, {
-				label: t("channelEnabled"),
+			}))), h(Section, { title: t("sectionChannel") }, h(Trigger, {
+				title: t("channelEnabled"),
 				checked: macos.enabled,
 				disabled,
-				onChange: (next) => commit(["channels", "macos", "enabled"], next)
-			}), sub(macos.enabled, [
-				h(SwitchRow, {
-					key: "ch-sound",
-					label: t("channelSound"),
-					checked: macos.sound,
-					disabled: disabled || !macos.enabled,
-					onChange: (next) => commit(["channels", "macos", "sound"], next)
-				}),
-				h(SwitchRow, {
-					key: "ch-click",
-					label: t("channelClickToOpen"),
-					checked: macos.clickToOpen,
-					disabled: disabled || !macos.enabled,
-					onChange: (next) => commit(["channels", "macos", "clickToOpen"], next)
-				}),
-				h(TextField, {
-					key: "ch-url",
-					id: "notix-ch-url",
-					label: t("channelBaseUrl"),
-					hint: t("channelBaseUrlHint"),
-					value: macos.baseUrl,
-					disabled: disabled || !macos.enabled,
-					onCommit: (v2) => commit(["channels", "macos", "baseUrl"], v2)
-				}),
-				h("div", {
-					key: "ch-test",
-					className: "notix-row"
-				}, h("button", {
-					type: "button",
-					className: "notix-test-button",
-					disabled: true,
-					title: t("testNotifyHint")
-				}, t("testNotify")), h("span", { className: "notix-hint" }, t("testNotifyHint")))
-			])), h("div", {
+				onChange: (next) => commit(["channels", "macos", "enabled"], next),
+				fields: [
+					h(ToggleField, {
+						key: "ch-sound",
+						label: t("channelSound"),
+						checked: macos.sound,
+						disabled: disabled || !macos.enabled,
+						onChange: (next) => commit(["channels", "macos", "sound"], next)
+					}),
+					h(ToggleField, {
+						key: "ch-click",
+						label: t("channelClickToOpen"),
+						checked: macos.clickToOpen,
+						disabled: disabled || !macos.enabled,
+						onChange: (next) => commit(["channels", "macos", "clickToOpen"], next)
+					}),
+					h(TextField, {
+						key: "ch-url",
+						id: "notix-ch-url",
+						label: t("channelBaseUrl"),
+						hint: t("channelBaseUrlHint"),
+						value: macos.baseUrl,
+						disabled: disabled || !macos.enabled,
+						onCommit: (v2) => commit(["channels", "macos", "baseUrl"], v2)
+					}),
+					h("div", {
+						key: "ch-test",
+						className: "notix-field-row"
+					}, h("button", {
+						type: "button",
+						className: "notix-test-button",
+						disabled: true,
+						title: t("testNotifyHint")
+					}, t("testNotify")), h("span", { className: "notix-field-label notix-field-hint" }, t("testNotifyHint")))
+				]
+			})), h("div", {
 				className: "notix-status",
 				role: "status",
 				"aria-live": "polite"
-			}, !writable ? h("span", null, t("readOnly")) : pending > 0 ? h("span", null, t("saving")) : result === "failed" ? h("span", { className: "notix-status-error", role: "alert" }, t("saveFailed")) : result === "saved" ? h("span", null, t("saved")) : null, writable ? h("div", { className: "notix-hint" }, t("reloadNote")) : null));
+			}, !writable ? h("span", null, t("readOnly")) : pending > 0 ? h("span", null, t("saving")) : result === "failed" ? h("span", { className: "notix-status-error", role: "alert" }, t("saveFailed")) : result === "saved" ? h("span", { className: "notix-status-saved" }, t("saved")) : null, writable ? h("span", { className: "notix-status-note" }, t("reloadNote")) : null));
 		}
 		//#endregion
 		//#region lib/client/index.js

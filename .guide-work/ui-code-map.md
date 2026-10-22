@@ -422,7 +422,7 @@ function NotixCard(props) {
 - **摘要态**（`:358-362`）：`已启用触发器 n/5 · 免打扰 开/关 · macOS 渠道 开/关`；快照未 ready 时退化为静态 description。详情页顶部也常驻同一行摘要（`:390`）。
 - **提交函数**（`:368-377`）：`commit(path, value)` 用计数器包住 `form.mutate([{op:"set",path,value}])`，`true→"saved"`、`false/reject→"failed"`，`finally` 减计数。**每次修改一次写、没有合并/防抖**。
 - **默认值兜底**（`:313-343`）：`DEFAULTS` 镜像 Host schema，`group(value, fallback)` 做浅合并，`summarize` 统计启用组数；`TRIGGER_GROUP_KEYS`（`:344`）固定 5 组。
-- **五个触发器分区**（`:390-516`）：每组「组开关 + 缩进子项」；子项 `disabled = disabled || !group.enabled`，容器带 `notix-sub-disabled` 降透明度（`:387-389`）。审批：提醒间隔、最多提醒次数；提问：提醒间隔、持续提醒；长任务：轮次/任务阈值；错误：冷却、工具错误、工具超时；完成：最短时长、包含后台任务。
+- **五个触发器分区**（`:390-516`）：每组「组开关 + 缩进子项」；子项 `disabled = disabled || !group.enabled`，容器带 `notix-sub-disabled` 降透明度（`:387-389`）。审批：提醒间隔、最多提醒次数；提问：提醒间隔、持续提醒；长任务：轮次/任务阈值；错误：冷却、工具错误、工具超时；完成：任务完成通知最短时长、包含后台任务。
 - **静默时段**（`:516-541`）：启用开关 + 两个 `TimeField`（from/to）+ `allowUrgent`。**不校验 from>to**，跨午夜语义交给 Host（设计文档 §9.5 承认）。
 - **通知内容**（`:542-561`）：语言下拉 zh/en、详略程度 minimal/normal，值来自 `v.language/verbosity`。
 - **macOS 渠道**（`:562-599`）：enabled/sound/clickToOpen 开关 + baseUrl 文本 + **禁用态测试按钮**（`disabled: true`，`title` 说明需要 Host 侧接口，`:591-599`）。Host 没有暴露 Remote 能力（`grep -rn "remote\|typert" packages/notix-dsh/lib` 无结果），UI 不臆造 API。

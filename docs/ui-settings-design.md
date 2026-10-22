@@ -14,16 +14,18 @@
 卡片自上而下：
 
 1. **状态摘要行**：`已启用触发器 n/5 · 免打扰 开/关 · macOS 渠道 开/关`，让用户不展开分组也能看到整体状态。
-2. **触发时机**（5 组，结构一致：组开关 + 缩进的子项；组关闭时子项禁用并降透明度）：
+2. **触发时机**（分组卡片内 5 个触发组，以 `.5px` 分隔线隔开；每组 = 主行 + 子字段区）：
+   - 主行：左侧标题（13px/500）+ 说明（12px tertiary），右侧共享 `Switch`——与 settings-general 的 DeveloperToolsRow 同款行形。
+   - 子字段区：「标签左、控件右」的字段行；组关闭时子项禁用并整体降透明度（保留可见，便于查看当前阈值）。
    - 审批请求：提醒间隔（分钟）、最多提醒次数（0–10 整数）
    - 待回答问题：提醒间隔（分钟）、未回答时持续提醒（schema 无 maxReminders，UI 不提供）
-   - 长任务：轮次阈值（分钟）、任务阈值（分钟）
+   - 长任务：轮次阈值（分钟）、包含后台任务（默认关；关闭时任务阈值行随之禁用）、任务阈值（分钟）
    - 错误：冷却时间（分钟）、工具错误、工具超时
-   - 轮次完成：最短时长（分钟）、包含后台任务
-3. **免打扰**：启用开关 + `from`/`to` 时间 + 允许紧急通知开关（子项随开关禁用）。
-4. **通知内容**：语言下拉（zh/en）、详略程度下拉（minimal/normal）。
-5. **macOS 渠道**：启用/声音/点击打开开关 + baseUrl 文本（子项随渠道开关禁用），以及「发送测试通知」**占位按钮**——禁用态并附说明，标注为后续能力（见 §8）。
-6. **底部状态区**：保存中 / 已保存 / 保存失败 / 只读原因 + 「修改即时生效」的常驻提示。
+   - 轮次完成：任务完成通知最短时长（分钟）、包含后台任务（默认关）
+3. **免打扰**：启用开关主行 + `from`/`to` 时间行 + 允许紧急通知开关行（子项随开关禁用）。
+4. **通知内容**：语言下拉（zh/en）、详略程度下拉（minimal/normal），两个字段行。
+5. **macOS 渠道**：启用主行 + 声音/点击打开开关行 + baseUrl 文本行（子项随渠道开关禁用），以及「发送测试通知」**占位按钮**——禁用态并附说明，标注为后续能力（见 §8）。
+6. **底部状态区**：保存中 / 已保存（success 色）/ 保存失败（error 色）/ 只读原因 + 右置的「修改即时生效」常驻提示。
 
 分组顺序与用户心智一致：先「什么时候打扰我」，再「什么时候别打扰我」，然后「通知长什么样」，最后「发到哪儿」。
 
@@ -31,18 +33,18 @@
 
 | 数据类型 | 控件 | 理由 |
 | --- | --- | --- |
-| 布尔开关 | primitives `Switch`（`checked/label/disabled/onChange(next)`） | 已确认存在于共享 primitives，且与 settings-general 的用法一致 |
-| 毫秒时长 | 数字输入，单位「分钟」 | 分钟是人类心智单位；显示 `ms/60000`（保留两位小数），提交 `Math.round(min*60000)`。失焦/Enter 提交；**非法值保留输入文本并就地报错**（不写配置） |
-| maxReminders | 数字输入，step 1，0–10 | 与 schema 的 `step(1).min(0).max(10)` 对齐，超出范围视为非法并就地报错 |
-| quietHours.from/to | `<input type="time">` | 原生时间控件直接产出 `HH:MM`，与 schema 字符串格式一致；`onChange` 即提交并做格式校验 |
-| language/verbosity | `<select>` | 枚举值固定（zh/en、minimal/normal），下拉避免非法值 |
-| baseUrl | 文本输入，失焦/Enter 提交 | 自由字符串，空串合法（schema 默认 `''`，表示用默认地址） |
+| 布尔开关 | primitives `Switch`（`checked/label/disabled/onChange(next)`），置于行右 | 已确认存在于共享 primitives，且与 settings-general 的用法一致；`label` 仅作 `aria-label`，可见文本由行内标题/标签承担 |
+| 毫秒时长 | 文本输入（`inputMode="decimal"`），单位「分钟」，右对齐 + `tabular-nums`，固定 88px 宽 | 分钟是人类心智单位；显示 `ms/60000`（保留两位小数），提交 `Math.round(min*60000)`。失焦/Enter 提交；**非法值保留输入文本并就地报错**（不写配置）。用 `type="text"` + `inputMode` 而非 `type="number"`，与内置 SettingsValueField 一致，规避受控 number input 的中间态问题 |
+| maxReminders | 同上，`inputMode="numeric"`，0–10 | 与 schema 的 `step(1).min(0).max(10)` 对齐，超出范围视为非法并就地报错 |
+| quietHours.from/to | `<input type="time">`，固定 120px 宽 | 原生时间控件直接产出 `HH:MM`，与 schema 字符串格式一致；`onChange` 即提交并做格式校验 |
+| language/verbosity | `<select>`，同款输入框样式 | 枚举值固定（zh/en、minimal/normal），下拉避免非法值 |
+| baseUrl | 文本输入，失焦/Enter 提交，`flex:1` 自适应行宽 | 自由字符串，空串合法（schema 默认 `''`，表示用默认地址） |
 
-所有输入都带显式 `id` + `<label htmlFor>` 包裹，并设置 `aria-label`。
+所有输入都带显式 `id` + `<label htmlFor>` 包裹，并设置 `aria-label`；视觉样式统一为 DSH 输入框语言（高 28px、`.5px` `border-l4` 描边、`radius-md` 圆角、`bg-layer-3` 底色、聚焦时描边变 `state-business-primary`、非法时描边变 `state-error-primary`）。
 
 ### 草稿-提交模型（NumberField/TextField）
 
-输入过程不直接写配置：组件内维护 draft 文本，**失焦或 Enter 才提交**；未聚焦时 draft 跟随外部快照值，因此 Host 侧写入（或写入被拒后的快照回弹）会正确覆盖显示，而不会打断正在输入的用户。`input type=number` 允许中间态（空串、`-`），用受控 draft 规避受控 number input 的诸多坑。提交时解析失败（非数字、负数、超出 0–10）**不回退**：保留用户输入、置 `aria-invalid` 并以 `role="alert"` 就地显示 `invalidNumber` 文案，用户继续输入即清除错误态。
+输入过程不直接写配置：组件内维护 draft 文本，**失焦或 Enter 才提交**；未聚焦时 draft 跟随外部快照值，因此 Host 侧写入（或写入被拒后的快照回弹）会正确覆盖显示，而不会打断正在输入的用户。输入用 `type="text"` + `inputMode`（与内置 SettingsValueField 一致），允许中间态（空串、`-`），用受控 draft 规避受控 number input 的诸多坑。提交时解析失败（非数字、负数、超出 0–10）**不回退**：保留用户输入、置 `aria-invalid`（输入框描边变 error 色）并在字段下方以 `role="alert"` 就地显示 `invalidNumber` 文案，用户继续输入即清除错误态。
 
 ### 提交路径
 
@@ -88,7 +90,7 @@
 | fieldRemindAfter / fieldMaxReminders / fieldRemindOnContinued | 提醒间隔（分钟）/ 最多提醒次数 / 未回答时持续提醒 | Remind after (min) / Max reminders / Keep reminding while unanswered |
 | fieldTurnThreshold / fieldJobThreshold | 轮次阈值（分钟）/ 任务阈值（分钟） | Turn threshold (min) / Job threshold (min) |
 | fieldCooldown / fieldToolErrors / fieldToolTimeout | 冷却时间（分钟）/ 工具错误 / 工具超时 | Cooldown (min) / Tool errors / Tool timeouts |
-| fieldMinDuration / fieldJobs | 最短时长（分钟）/ 包含后台任务 | Minimum duration (min) / Include background jobs |
+| fieldMinDuration / fieldJobs | 任务完成通知最短时长（分钟）/ 包含后台任务 | Completion notification min duration (min) / Include background jobs |
 | quietEnabled / quietFrom / quietTo / quietAllowUrgent | 启用免打扰时段 / 开始 / 结束 / 允许紧急通知（审批） | Enable quiet hours / From / To / Allow urgent notifications (approvals) |
 | fieldLanguage / languageZh / languageEn | 语言 / 中文 / English | Language / 中文 / English |
 | fieldVerbosity / verbosityMinimal / verbosityNormal | 详略程度 / 简洁 / 常规 | Verbosity / Minimal / Normal |
@@ -103,14 +105,16 @@
 - **标签**：每个输入都有可见文本标签（`<label htmlFor>`）+ `aria-label`；分组用 `<section>` + `<h3>` 标题，屏幕阅读器可按标题跳转。
 - **状态播报**：底部状态区 `role="status" aria-live="polite"`，保存失败单独 `role="alert"`。
 - **禁用态**：组开关关闭时子项同时禁用（`disabled`）并降低不透明度，避免「看起来能改但改了无效」。
-- **对比度**：颜色仅使用主题变量（`--dsw-alias-state-error-primary`）与透明度，不硬编码前景色。
+- **对比度**：颜色仅使用主题变量（`--dsw-alias-label-*`、`--dsw-alias-border-*`、`--dsw-alias-state-*`、`--dsw-alias-settings-card-*` 等，均带兜底值）与透明度，不硬编码前景色。
 
 ## 7. 与 dsh 现有 Settings 视觉语言的一致性
 
 - **挂载契约完全一致**：与内置设置页（agent-loop、web-search、subagent、shell）相同的 `plugins.item` 插槽注册结构、`view: "summary" | "page"` 双视图、字典经 `ctx.locale.register` 注册——卡片在插件列表里的折叠/展开行为与内置页无异。
+- **分组卡片语言一致**：每个 section = 15px/600 标题（settings-plugins 的 `presetSettingsTitle`）+ 一张 `.5px` 描边、`radius-xl` 圆角、`settings-card-fill` 底色的分组卡片（settings-models 的 `rowCard`），卡片内触发组之间用 `.5px border-l2` 分隔线隔开。
+- **行形一致**：触发组主行复刻 settings-general `DeveloperToolsRow` 的「标题 + 描述在左、控件在右」（`justify-content: space-between; align-items: flex-start; gap: 16px`）；子字段行复刻 SettingsValueField 的标签/输入层级（标签 13px secondary、输入 13px primary、错误/提示 12px）。
 - **复用共享原语**：开关使用 `@deepseek-ai/dsh-client-ui-primitives` 的 `Switch`（与 settings-general 同款，`onChange(next: boolean)`），而不是自绘样式，保证与全局开关的视觉/交互一致。
-- **CSS 注入模式一致**：`<style data-plugin-css>` 单次注入（与 ui-jobs、ui-settings-web-search 的打包产物相同的方式）；类名全部以 `notix-` 前缀隔离，只定义布局（flex/gap/缩进/透明度），颜色只引用主题变量（`--dsw-alias-state-error-primary`）不硬编码，自动跟随明暗主题。
-- **状态区语言一致**：只读/保存中/保存失败文案与内置页措辞对齐（如 saveFailed 直接沿用「本部署没有接受这些值，已保留供你修改。」），避免同一界面里两套说法。
+- **CSS 注入模式一致**：`<style data-plugin-css>` 单次注入（与 ui-jobs、ui-settings-web-search 的打包产物相同的方式）；类名全部以 `notix-` 前缀隔离，只定义布局（flex/gap/内边距/透明度），颜色、圆角、描边全部引用主题变量（`--dsw-alias-*`、`--dsw-radius-*`，均带兜底值），自动跟随明暗主题。
+- **状态区语言一致**：只读/保存中/保存失败文案与内置页措辞对齐（如 saveFailed 直接沿用「本部署没有接受这些值，已保留供你修改。」），「已保存」用 `state-success-primary`、失败用 `state-error-primary`，避免同一界面里两套说法。
 - **有意的差异（取舍）**：内置页多用 `SettingsForm` 框架 + 显式「保存」按钮；本卡片选择**即改即存**（见 §1 的取舍说明），因此没有底部保存按钮，改为常驻状态区 + 行内错误提示。这是基于 configForms 写队列事实的选择，而非视觉偏离：字体、间距、控件仍全部来自共享原语与主题变量。
 
 ## 8. 实现依据（实际引用的源码）
