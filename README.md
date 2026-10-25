@@ -59,15 +59,26 @@ Click **Allow** on the first notification; afterwards the banner shows the Notix
 
 ## Install
 
-From the Web GUI sidebar **Plugins** page, install this package, or:
+From the Web GUI sidebar **Plugins** page, install this package (the GUI updates the active profile and selects the bundle for you), or use the CLI. The profile depends on how DSH runs:
+
+- **Desktop app** (`~/.dsh/profiles/desktop`): open the app once so the profile exists, then **quit it** — the CLI refuses to modify the desktop profile while the app is running.
+
+  ```bash
+  dsh plugin --profile desktop add notix-dsh
+  ```
+
+- **`dsh web` / browser GUI** (`~/.dsh/profiles/web`):
+
+  ```bash
+  dsh plugin --profile web add notix-dsh
+  ```
+
+After a CLI install, confirm the package is listed in the profile's `dsh.profile.bundles`, then restart that DSH instance. A `link:` install is handy during development:
 
 ```bash
-dsh plugin --profile web add notix-dsh
-```
-
-Then make sure the bundle is selected in the profile manifest (`dsh.profile.bundles`). A `link:` install is handy during development:
-
-```bash
+# desktop: quit the app first
+dsh plugin --profile desktop add link:/absolute/path/to/notix-dsh
+# web
 dsh plugin --profile web add link:/absolute/path/to/notix-dsh
 ```
 

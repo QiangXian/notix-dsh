@@ -114,7 +114,7 @@ userQuestions projection ──────────────────�
 | BL-07 | 免打扰在 dedupe 和历史之前直接丢弃；长 turn 看门狗只发一次，静默后不会在时段结束补发。 | 建议明确为“不投递、不记历史、不积压补发”；仍等待的问题是否继续后续提醒需单独验证。 |
 | BL-08 | README 的点击跳转/签名降级描述与后端实际能力不完全一致；Helper 存在但未授权时不会回退 osascript。UI 还写“baseUrl 留空使用默认地址”，实际空值不会传 `-open`。 | 以确认后的后端能力矩阵为准；明确发送失败是重试还是自动降级，以及空 URL 的真实语义。 |
 | BL-09 | `scripts/test-macos-notification.mjs` 调用了当前类中不存在的 `detectHelper()`。 | 正式执行前修复或替换自检入口；不能用该脚本当前状态作为渠道通过证据。 |
-| BL-10 | UI 的 30 个配置叶子只暴露 27 个，缺 `userQuestion.maxReminders`、`notifierApp`、`appIcon`；“发送测试通知”按钮始终禁用，却建议通过保存验证投递；quiet urgent 文案只提审批而未提问题。 | 三个缺失字段通过 profile patch 覆盖，是否补 UI 由产品决定；保存配置不得被当作已发送通知；禁用按钮仅验证说明与不可操作；统一 urgent 文案与实际范围。 |
+| BL-10 | UI 的 30 个配置叶子只暴露 27 个，缺 `userQuestion.maxReminders`、`notifierApp`、`appIcon`；“发送测试通知”入口缺失（DEF-004 已移除永久禁用按钮），历史版本曾建议通过保存验证投递；quiet urgent 文案只提审批而未提问题。 | 三个缺失字段通过 profile patch 覆盖，是否补 UI 由产品决定；保存配置不得被当作已发送通知；不得出现禁用或未来能力的死控件；统一 urgent 文案与实际范围。 |
 | BL-11 | `verbosity` 实际只影响 error body；`minimal` 隐藏错误消息，但审批 reason、后台任务 label 等仍可能包含命令或路径，`normal` 也只是截断 error.message，并非完整命令/文件内容；渠道异常日志还可能带参数。 | 统一文档与实现，建立字段级隐私白名单和日志脱敏口径，再执行 secret canary 用例。 |
 | BL-12 | 本地 overlay 曾以固定绝对路径入库；已拆为入库模板 `dev/notix.patch.example.yml` + 被 `.gitignore` 忽略的 `dev/notix.patch.local.yml`。 | E2E 环境准备时生成指向受测 checkout 的临时 patch，不直接依赖本机实例路径。 |
 | BL-13 | 错误冷却中的 suppressed count 在窗口结束后是否应汇总到下一条，需要结合当前状态重置逻辑确认。 | 明确“合并提醒”的计数语义，并验证窗口内、跨窗口和重启后的行为。 |
@@ -239,7 +239,7 @@ Node/pnpm 版本在正式执行前按所选 DSH 的支持矩阵锁定，不在�
 | UI-18 | P1 | 卸载/重挂组件并检查订阅、style、timer 和事件监听。 | 订阅全部释放；相同样式最多一份；无 setState-after-unmount 或重复保存。 |
 | UI-19 | P1 | 键盘遍历 Switch/input/select/button，检查 label、focus、status live region、对比度。 | 全部可操作控件可访问且名称唯一；错误/保存状态可朗读；焦点可见，不只靠颜色表达。 |
 | UI-20 | P2 | Light/Dark × 中/英文 × 宽/窄视口，覆盖长错误和长 URL。 | 两页面无溢出、遮挡、截断关键控件；主题变量有效；保留截图基线。 |
-| UI-21 | P1 | 查看“发送测试通知”按钮及提示，尝试点击；再仅保存任一配置并观察是否有通知。 | 当前版本按钮始终禁用且解释未来能力，不会伪造 Host 请求；保存配置本身不等于发送测试通知，提示不得造成误解；通过其他受控入口完成渠道测试。 |
+| UI-21 | P1 | 检查设置页不存在“发送测试通知”或任何禁用/未来能力的死控件；仅保存任一配置并观察是否发送通知。 | 不出现死控件，也不宣称尚未提供的 Host API；保存配置本身不等于发送测试通知；渠道验证通过受控脚本（`pnpm notify-test`）或后续 Host API 完成。 |
 | UI-22 | P2 | 页面刷新、客户端重载和受支持的浏览器组合。 | bundle 重建后刷新可加载；不承诺未经 watcher 验证的 HMR；状态恢复、控制台无未处理异常。 |
 | UI-23 | P0 | 从 Plugins 列表点击 Notix 进入详情，再从 Settings → Plugins 打开 Notix 页签；捕获控制台与 DOM。 | 两个入口都渲染完整卡片，不空白、不崩溃、无 `getSnapshot is not a function`；页面标题摘要只出现一次。 |
 | UI-24 | P1 | 检查完整设置页的摘要、提示文案和控件可用性。 | 摘要不重复；“留空则不启用点击跳转”等提示与实际行为一致；无永久禁用或未来能力的死控件。 |

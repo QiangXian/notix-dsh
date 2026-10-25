@@ -62,15 +62,26 @@ NOTIX_SIGN_IDENTITY="Apple Development: 你的名字 (TEAMID)" \
 
 ## 安装
 
-在 Web GUI 侧边栏 **Plugins** 页安装，或：
+在 Web GUI 侧边栏 **Plugins** 页安装（GUI 会自动更新当前 profile 并选中 bundle），或用 CLI。用哪个 profile 取决于 DSH 的运行方式：
+
+- **桌面 App**（`~/.dsh/profiles/desktop`）：先打开一次 App 让 profile 初始化，然后**退出 App**——CLI 在 App 运行期间会拒绝修改 desktop profile。
+
+  ```bash
+  dsh plugin --profile desktop add notix-dsh
+  ```
+
+- **`dsh web` / 浏览器 GUI**（`~/.dsh/profiles/web`）：
+
+  ```bash
+  dsh plugin --profile web add notix-dsh
+  ```
+
+CLI 安装后请确认该包已列入对应 profile 的 `dsh.profile.bundles`，再重启该 DSH 实例。开发期可用 `link:` 安装：
 
 ```bash
-dsh plugin --profile web add notix-dsh
-```
-
-并确认该 bundle 已加入 profile manifest 的 `dsh.profile.bundles`。开发期可用 `link:` 安装：
-
-```bash
+# 桌面 App：先退出 App
+dsh plugin --profile desktop add link:/绝对路径/notix-dsh
+# web
 dsh plugin --profile web add link:/绝对路径/notix-dsh
 ```
 
