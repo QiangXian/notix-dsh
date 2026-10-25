@@ -52,7 +52,11 @@ export function createMockContext(options = {}) {
   const sessionProjections = {
     stateOf(session, key) {
       if (key === 'title') return titles.get(session.header.id) ?? null
-      if (key === 'userQuestions') return questionState.get(session.header.id) ?? { active: [], settled: [] }
+      if (key === 'userQuestions') {
+        // Mirror the real Host state: `stateOf()` returns the raw projection
+        // state while `onChanged` delivers `state.questions` as the wire view.
+        return questionState.get(session.header.id) ?? { inheritedEventCount: 0, timed: false, questions: { active: [], settled: [] } }
+      }
       return undefined
     },
     onChanged(listener) {
@@ -131,7 +135,7 @@ export function createMockContext(options = {}) {
       for (const callback of listeners.get('session/event') ?? []) callback(session, full)
     },
     emitUserQuestions(session, value) {
-      questionState.set(session.header.id, value)
+      questionState.set(session.header.id, { inheritedEventCount: 0, timed: false, questions: value })
       projectionListener?.(session, 'userQuestions', value, 0)
     },
     /** Advance the fake clock and run every timer that becomes due. */

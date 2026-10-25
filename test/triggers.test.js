@@ -235,3 +235,65 @@ test('open questions get reminder chains that stop when answered', async () => {
   await flush(core)
   assert.equal(notifications.length, 2, 'answering stops the reminder chain')
 })
+
+test('seeding pre-existing questions stays silent and keeps the agent busy', async () => {
+  const session = createSession('s1', 'demo')
+  const { core, ctx, notifications } = await createCore({
+    sessions: [session],
+    config: {
+      triggers: {
+        userQuestion: { remindAfterMs: 1000, maxReminders: 2 },
+        longTask: { turnThresholdMs: 5000 },
+      },
+    },
+  })
+
+  // The Host projection already holds this question before the plugin loads.
+  ctx.emitUserQuestions(session, {
+    active: [{ callId: 'seed1', state: 'open', questions: [{ id: 'q0', question: '旧问题' }] }],
+    settled: [],
+  })
+
+  installTriggers(ctx, core)
+  await flush(core)
+  assert.equal(core.isBusy('s1'), true, 'seeding mirrors the blocked-agent state')
+
+  ctx.advance(60_000)
+  await flush(core)
+  assert.equal(notifications.length, 0, 'seeding neither announces nor arms reminders')
+
+  ctx.emitSession(session, { type: 'turn/start', data: { turn: 1 } })
+  ctx.advance(30_000)
+  await flush(core)
+  assert.equal(notifications.length, 0, 'the seeded question keeps long-task watchdogs quiet')
+
+  ctx.emitUserQuestions(session, {
+    active: [
+      { callId: 'seed1', state: 'open', questions: [{ id: 'q0', question: '旧问题' }] },
+      { callId: 'c2', state: 'open', questions: [{ id: 'q2', question: '新问题' }] },
+    ],
+    settled: [],
+  })
+  await flush(core)
+  assert.equal(notifications.length, 1, 'only the genuinely new question notifies')
+  assert.match(notifications[0].body, /新问题/)
+
+  ctx.emitUserQuestions(session, {
+    active: [
+      { callId: 'seed1', state: 'open', questions: [{ id: 'q0', question: '旧问题' }] },
+      { callId: 'c2', state: 'open', questions: [{ id: 'q2', question: '新问题' }] },
+    ],
+    settled: [],
+  })
+  await flush(core)
+  assert.equal(notifications.length, 1, 're-observing the same set does not notify again')
+
+  // The turn is shorter than completion.minDurationMs, so ending it is silent
+  // and cancels the long-task watchdog before the question is answered.
+  ctx.emitSession(session, { type: 'turn/end', data: { turn: 1, reason: { kind: 'completed' } } })
+  ctx.emitUserQuestions(session, { active: [], settled: [{ callId: 'c2', answers: [] }] })
+  ctx.advance(10_000)
+  await flush(core)
+  assert.equal(core.isBusy('s1'), false)
+  assert.equal(notifications.length, 1, 'answering stops the reminder chain')
+})

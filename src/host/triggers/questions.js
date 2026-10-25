@@ -6,11 +6,18 @@
  * @module notix-dsh/triggers/questions
  */
 
-/** Read the active question list of one session from the projection. */
+/**
+ * Read the active question list of one session.
+ *
+ * `stateOf()` returns the raw Host projection state, whose question view is
+ * nested under `questions` (`{ inheritedEventCount, timed, questions }`).
+ * The `onChanged` feed below already delivers that nested view as `value`,
+ * so only the seeding path has to unwrap it.
+ */
 function activeQuestions(ctx, session) {
   try {
     const state = ctx.get('sessionProjections')?.stateOf(session, 'userQuestions')
-    return Array.isArray(state?.active) ? state.active : []
+    return Array.isArray(state?.questions?.active) ? state.questions.active : []
   } catch {
     return []
   }
@@ -119,8 +126,25 @@ export function installQuestions(ctx, core) {
   }
 
   // Seed from live sessions so pre-existing questions do not notify on reload.
+  /** Record already-open questions as seen without announcing or reminding them. */
+  const seed = (session, questions) => {
+    const sessionId = session.header.id
+    const seen = { open: new Set(), continued: new Set() }
+    for (const question of questions) {
+      const callId = question?.callId
+      if (typeof callId !== 'string') continue
+      if (question.state === 'open') seen.open.add(callId)
+      else if (question.state === 'continued') seen.continued.add(callId)
+    }
+    announced.set(sessionId, seen)
+    // The agent is already blocked on the user; keep the long-task watchdogs
+    // quiet, but never arm the reminder chain for a question the user has seen.
+    if (questions.length > 0) core.markBusy(sessionId, 'question')
+    else core.clearBusy(sessionId, 'question')
+  }
+
   try {
-    for (const session of ctx.sessions.list()) observe(session, activeQuestions(ctx, session))
+    for (const session of ctx.sessions.list()) seed(session, activeQuestions(ctx, session))
   } catch (error) {
     core.logger?.warn(`notix: seeding user questions failed: ${String(error)}`)
   }
