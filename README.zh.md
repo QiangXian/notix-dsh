@@ -71,7 +71,7 @@ dsh plugin --profile web add notix-dsh
 并确认该 bundle 已加入 profile manifest 的 `dsh.profile.bundles`。开发期可用 `link:` 安装：
 
 ```bash
-dsh plugin --profile web add link:/绝对路径/notix-dsh-merged
+dsh plugin --profile web add link:/绝对路径/notix-dsh
 ```
 
 ## 设置界面

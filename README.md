@@ -68,7 +68,7 @@ dsh plugin --profile web add notix-dsh
 Then make sure the bundle is selected in the profile manifest (`dsh.profile.bundles`). A `link:` install is handy during development:
 
 ```bash
-dsh plugin --profile web add link:/absolute/path/to/notix-dsh-merged
+dsh plugin --profile web add link:/absolute/path/to/notix-dsh
 ```
 
 ```jsonc

@@ -122,3 +122,10 @@ Build-contract tests verify that:
 Commit source, tests, build scripts, configuration and documentation. **Do not commit `lib/` or rely on generated files surviving a checkout.** For `link:` development, run `pnpm build` before starting DSH so `lib/index.js` and `lib/client.js` exist.
 
 To boot DSH against this checkout without installing it, copy the tracked template `dev/notix.patch.example.yml` to `dev/notix.patch.local.yml`, replace its placeholder `name` path with the absolute `lib/index.js` of this checkout, then run `pnpm build` and `dsh --profile web --patch ./dev/notix.patch.local.yml --dump-config`. `dev/*.local.yml` is ignored by Git, so machine-specific absolute paths never enter the repository; the template itself only carries `/absolute/path/to/notix-dsh`.
+
+## Release
+
+1. Bump `version` in `package.json` and keep `dsh.engines.dsh` aligned with the runtime versions this release was verified against.
+2. Run `pnpm verify`: it rebuilds `lib/`, runs the full test suite, smokes the Client bundle and checks full-tree reproducibility.
+3. Inspect the published file set with `npm pack --dry-run`. It must contain `lib/`, `src/`, `assets/`, `cordis.patch.yml`, `locale/*.json`, `scripts/build-notifier-app.sh` and `scripts/notifier/`, and the README/DEVELOPMENT docs; it must not contain `test/`, `build/` or `.tmp/`.
+4. Tag the commit (`git tag v<version>`) and publish with `npm publish`; `prepack` rebuilds `lib/` from `src/` automatically.
