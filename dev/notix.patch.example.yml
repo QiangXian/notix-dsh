@@ -1,0 +1,21 @@
+# Template for the boot-time overlay that loads the local checkout without
+# installing it. Copy it to a machine-local file, rewrite the absolute path to
+# this checkout, and keep the copy out of Git (dev/*.local.yml is ignored).
+#
+#   cp dev/notix.patch.example.yml dev/notix.patch.local.yml
+#   # replace /absolute/path/to/notix-dsh with the output of `pwd`
+#   pnpm build
+#   dsh --profile web --patch ./dev/notix.patch.local.yml --dump-config
+#
+# The single Loader entry loads the Host half and lets dsh-client-modules
+# discover the package's dsh.client.
+- insert:
+    - id: notix
+      name: /absolute/path/to/notix-dsh/lib/index.js
+      config:
+        language: zh
+        channels:
+          macos:
+            enabled: true
+            sound: true
+            clickToOpen: true

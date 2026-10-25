@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Notix notifications",
+    "description": "Desktop notifications for agent input, long runs, failures and completions, with a built-in settings UI."
+  }
+}

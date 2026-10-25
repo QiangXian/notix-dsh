@@ -1,0 +1,79 @@
+{
+  "name": "notix-dsh",
+  "version": "0.2.0",
+  "description": "Desktop notifications and built-in settings UI for DeepSeek Harness.",
+  "type": "module",
+  "packageManager": "pnpm@10.26.2",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "src",
+    "tsdown.config.mjs",
+    "icon.png",
+    "cordis.patch.yml",
+    "locale",
+    "README.md",
+    "README.zh.md",
+    "LICENSE",
+    "assets",
+    "scripts",
+    "docs/assets",
+    "docs/DEVELOPMENT.md"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:check": "node scripts/build.mjs --check",
+    "verify": "pnpm test && pnpm run smoke && pnpm run build:check",
+    "pretest": "pnpm build",
+    "test": "node --test test/*.test.js",
+    "smoke": "node scripts/smoke-client.mjs",
+    "test:ui": "node scripts/smoke-client.mjs",
+    "notify-test": "node scripts/test-macos-notification.mjs",
+    "prepack": "pnpm build"
+  },
+  "icon": "./icon.png",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-plugin-manager"
+      ],
+      "platform": "web"
+    }
+  },
+  "engines": {
+    "node": "^22.18.0 || >=24.0.0",
+    "dsh": ">=0.2.1-rc.2 <0.3.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.0.5"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.5",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/cordis-plugin-timer": "1.1.7",
+    "tsdown": "0.22.2"
+  },
+  "license": "MIT",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "notification",
+    "settings-ui",
+    "deepseek-harness"
+  ]
+}

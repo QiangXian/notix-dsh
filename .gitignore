@@ -1,0 +1,16 @@
+node_modules/
+.pnpm-store/
+*.tgz
+*.log
+.DS_Store
+dist/
+lib/
+coverage/
+
+.tmp/
+
+build/
+issue/
+
+# Machine-local dev overlay copies (template: dev/notix.patch.example.yml)
+dev/*.local.yml

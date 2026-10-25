@@ -1,0 +1,22 @@
+/**
+ * Send one real macOS notification through the Notix channel adapter.
+ * Useful to verify notification permissions before installing the plugin:
+ *   node scripts/test-macos-notification.mjs
+ */
+import { MacosChannel } from '../lib/channels/macos.js'
+
+const logger = {
+  info: (message) => console.log(`[notix] ${message}`),
+  warn: (message) => console.warn(`[notix] ${message}`),
+}
+
+const config = { enabled: true, sound: true, clickToOpen: false, baseUrl: '', notifierApp: '', appIcon: '' }
+const channel = new MacosChannel(() => config, logger)
+const backend = await channel.detectBackend()
+await channel.send({
+  title: 'Notix 渠道自检',
+  body: '如果你看到这条通知，macOS 通知通道可用。',
+  dedupeKey: 'notix:selftest',
+})
+const label = backend.kind === 'helper-app' ? 'Notix.app helper' : (backend.tool ?? 'osascript')
+console.log(`[notix] delivered through ${label}`)
