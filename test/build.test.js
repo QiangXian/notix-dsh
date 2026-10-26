@@ -72,9 +72,40 @@ test('unified build and prepack use a pinned, explicit toolchain', async () => {
   assert.equal(manifest.scripts['build:check'], 'node scripts/build.mjs --check')
   assert.equal(manifest.scripts.pretest, 'pnpm build')
   assert.equal(manifest.scripts.prepack, 'pnpm build')
-  assert.ok(manifest.files.includes('src'))
-  assert.ok(manifest.files.includes('tsdown.config.mjs'))
-  assert.ok(manifest.files.includes('docs/DEVELOPMENT.md'))
+  assert.equal(manifest.scripts.prepublishOnly, 'pnpm verify')
+
+  // The published tarball is runtime-only: it carries the generated host tree,
+  // the browser bundle and the assets those files resolve at runtime, plus the
+  // macOS helper build inputs. Sources, tests, docs and build tooling stay out.
+  const RUNTIME_FILES = [
+    'lib',
+    'assets',
+    'locale',
+    'cordis.patch.yml',
+    'icon.png',
+    'scripts/build-notifier-app.sh',
+    'scripts/notifier',
+    'README.md',
+    'README.zh.md',
+    'LICENSE',
+  ]
+  for (const entry of RUNTIME_FILES) {
+    assert.ok(manifest.files.includes(entry), `files must publish ${entry}`)
+  }
+  for (const entry of ['src', 'test', 'dev', 'docs', 'tsdown.config.mjs', 'build']) {
+    assert.equal(
+      manifest.files.some((file) => file === entry || file.startsWith(`${entry}/`)),
+      false,
+      `files must not publish ${entry}`,
+    )
+  }
+  assert.deepEqual(
+    manifest.files.filter((entry) => entry.startsWith('scripts/')).sort(),
+    ['scripts/build-notifier-app.sh', 'scripts/notifier'],
+    'scripts/ must stay a narrow allowlist',
+  )
+  assert.equal(manifest.publishConfig?.access, 'public')
+  assert.equal(manifest.publishConfig?.registry, 'https://registry.npmjs.org/')
 
   const gitignore = await readProjectFile('.gitignore')
   // Match per line so a CRLF working tree (core.autocrlf) passes too.

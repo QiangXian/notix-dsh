@@ -14,18 +14,15 @@
   },
   "files": [
     "lib",
-    "src",
-    "tsdown.config.mjs",
-    "icon.png",
-    "cordis.patch.yml",
+    "assets",
     "locale",
+    "cordis.patch.yml",
+    "icon.png",
+    "scripts/build-notifier-app.sh",
+    "scripts/notifier",
     "README.md",
     "README.zh.md",
-    "LICENSE",
-    "assets",
-    "scripts",
-    "docs/assets",
-    "docs/DEVELOPMENT.md"
+    "LICENSE"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
@@ -37,7 +34,8 @@
     "test:ui": "node scripts/smoke-client.mjs",
     "notify-test": "node scripts/test-macos-notification.mjs",
     "notify-test:win": "node scripts/test-windows-notification.mjs",
-    "prepack": "pnpm build"
+    "prepack": "pnpm build",
+    "prepublishOnly": "pnpm verify"
   },
   "icon": "./icon.png",
   "dsh": {
@@ -70,6 +68,10 @@
     "tsdown": "0.22.2"
   },
   "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "keywords": [
     "dsh",
     "dsh-plugin",

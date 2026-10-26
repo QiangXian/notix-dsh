@@ -35,7 +35,7 @@ lib/                    Generated in full; never edit or commit this directory
   client.js.map         Client source map emitted by tsdown
 ```
 
-`lib/` is listed in `.gitignore`. A clean checkout therefore starts without runtime artifacts; the build, test and packaging commands create them as needed. The npm allowlist includes both `src/` and the generated `lib/`, so published packages remain runnable and inspectable. If an existing repository already tracks `lib/`, remove it from the Git index once with `git rm -r --cached lib` after moving the sources; `.gitignore` alone does not untrack earlier artifacts.
+`lib/` is listed in `.gitignore`. A clean checkout therefore starts without runtime artifacts; the build, test and packaging commands create them as needed. The npm allowlist is runtime-only: the tarball carries the generated `lib/`, `assets/`, `locale/`, `cordis.patch.yml`, `icon.png`, the macOS helper build inputs (`scripts/build-notifier-app.sh`, `scripts/notifier/`) and the READMEs. Development sources, tests, docs and build tooling stay out of the package; `prepack` regenerates `lib/` from `src/` at publish time. If an existing repository already tracks `lib/`, remove it from the Git index once with `git rm -r --cached lib` after moving the sources; `.gitignore` alone does not untrack earlier artifacts.
 
 ## Build architecture
 
@@ -163,7 +163,9 @@ To boot DSH against this checkout without installing it, copy the tracked templa
 
 ## Release
 
-1. Bump `version` in `package.json` and keep `dsh.engines.dsh` aligned with the runtime versions this release was verified against.
-2. Run `pnpm verify`: it rebuilds `lib/`, runs the full test suite, smokes the Client bundle and checks full-tree reproducibility.
-3. Inspect the published file set with `npm pack --dry-run`. It must contain `lib/`, `src/`, `assets/`, `cordis.patch.yml`, `locale/*.json`, `scripts/build-notifier-app.sh`, `scripts/notifier/`, `scripts/test-macos-notification.mjs` and `scripts/test-windows-notification.mjs`, and the README/DEVELOPMENT docs; it must not contain `test/`, `build/` or `.tmp/`.
-4. Tag the commit (`git tag v<version>`) and publish with `npm publish`; `prepack` rebuilds `lib/` from `src/` automatically.
+1. Bump `version` in `package.json` and keep the top-level `engines.dsh` (not `dsh.engines.dsh` — the runtime reads the manifest root) aligned with the runtime versions this release was verified against.
+2. Run `pnpm verify`: it rebuilds `lib/`, runs the full test suite, smokes the Client bundle and checks full-tree reproducibility. `prepublishOnly` repeats this gate on every publish.
+3. Inspect the published file set with `npm pack --dry-run --json`. It must contain exactly `lib/` (including `lib/channels/toast.ps1`), `assets/`, `locale/*.json`, `cordis.patch.yml`, `icon.png`, `scripts/build-notifier-app.sh`, `scripts/notifier/NotixNotifier.swift`, `README.md`, `README.zh.md` and `LICENSE`. It must not contain `src/`, `test/`, `dev/`, `docs/`, the other `scripts/*.mjs`, `tsdown.config.mjs`, `build/`, `.tmp/` or `node_modules/`.
+4. Commit, then tag the commit (`git tag v<version>`).
+5. Publish from the repository root with `pnpm publish` (local manual release). The npm lifecycle runs `prepublishOnly` → `prepack` → publish, so `lib/` is regenerated from `src/` and verified even though it is not committed.
+6. Verify the result with `npm view notix-dsh version dist.tarball` and a throwaway install; see [docs/PUBLISHING.md](PUBLISHING.md) for the full pre-flight checklist, command sequence and rollback steps.
