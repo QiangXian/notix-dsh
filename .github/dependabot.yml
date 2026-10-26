@@ -1,0 +1,26 @@
+version: 2
+updates:
+  # Runtime and development dependencies. `@deepseek-ai/*` versions are kept
+  # aligned with the DSH release line this plugin is verified against, so the
+  # major-version upgrades are ignored on purpose.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: '@deepseek-ai/*'
+        update-types: ['version-update:semver-major']
+    groups:
+      dev-dependencies:
+        dependency-type: development
+        update-types: ['minor', 'patch']
+
+  # The verify workflow itself.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5

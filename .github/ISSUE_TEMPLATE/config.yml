@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/QiangXian/notix-dsh/security/advisories/new
+    about: Please report security issues privately instead of opening a public issue.
+  - name: Notification troubleshooting
+    url: https://github.com/QiangXian/notix-dsh#troubleshooting
+    about: Missing, silent or wrong-icon notifications — check the README troubleshooting tables first.
+  - name: Development guide
+    url: https://github.com/QiangXian/notix-dsh/blob/main/docs/DEVELOPMENT.md
+    about: Source layout, build pipeline, channel architecture and the release workflow.

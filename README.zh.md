@@ -4,6 +4,7 @@
 
 [![npm version](https://img.shields.io/npm/v/notix-dsh)](https://www.npmjs.com/package/notix-dsh)
 [![npm downloads](https://img.shields.io/npm/dm/notix-dsh)](https://www.npmjs.com/package/notix-dsh)
+[![verify](https://github.com/QiangXian/notix-dsh/actions/workflows/verify.yml/badge.svg)](https://github.com/QiangXian/notix-dsh/actions/workflows/verify.yml)
 [![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-5B8DEF)](#平台支持)
 [![node](https://img.shields.io/badge/node-%5E22.18%20%7C%7C%20%3E%3D24-339933?logo=node.js&logoColor=white)](#环境要求)
 [![license](https://img.shields.io/badge/license-MIT-green)](https://github.com/QiangXian/notix-dsh/blob/main/LICENSE)
@@ -451,7 +452,9 @@ dsh --profile web --patch ./dev/notix.patch.local.yml --dump-config
 
 ## 参与贡献
 
-欢迎在 [QiangXian/notix-dsh](https://github.com/QiangXian/notix-dsh) 提交 Issue 或 Pull Request。动手前请阅读[开发指南](https://github.com/QiangXian/notix-dsh/blob/main/docs/DEVELOPMENT.md)，提交 PR 前运行 `pnpm verify`；请勿提交 `lib/`（它由 `src/` 全量生成）。
+欢迎在 [QiangXian/notix-dsh](https://github.com/QiangXian/notix-dsh) 提交 Issue 或 Pull Request。动手前请先读[贡献指南](https://github.com/QiangXian/notix-dsh/blob/main/CONTRIBUTING.md)与[开发指南](https://github.com/QiangXian/notix-dsh/blob/main/docs/DEVELOPMENT.md)，提交 PR 前运行 `pnpm verify`；请勿提交 `lib/`（它由 `src/` 全量生成）。
+
+版本变更记录见 [CHANGELOG.md](https://github.com/QiangXian/notix-dsh/blob/main/CHANGELOG.md)；发版由维护者按[发布手册](https://github.com/QiangXian/notix-dsh/blob/main/docs/PUBLISHING.md)执行。安全问题请按 [SECURITY.md](https://github.com/QiangXian/notix-dsh/blob/main/SECURITY.md) 私下报告；所有项目空间遵循[行为准则](https://github.com/QiangXian/notix-dsh/blob/main/CODE_OF_CONDUCT.md)。
 
 ## 许可证
 

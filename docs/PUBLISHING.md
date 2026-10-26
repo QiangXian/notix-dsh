@@ -261,26 +261,29 @@ Run in order; do not skip the dry-run.
 5. **Full local gate.** `pnpm verify` → rebuilds `lib/`, runs the full test suite (67 passing tests;
    the Windows-only end-to-end test is skipped on macOS), client bundle smoke, and the
    byte-for-byte `build:check` reproducibility check.
-6. **File set.** The `npm pack --dry-run` check in §2.1 → 33 files, no forbidden paths.
-7. **Full lifecycle rehearsal.** `pnpm publish --dry-run --no-git-checks` → same 33 files, public
+6. **CI green on the release commit.** The `verify` workflow
+   (`.github/workflows/verify.yml`) runs the same `pnpm verify` gate on Node 22 and 24; check
+   `gh run list --workflow verify.yml --limit 3` after pushing the release commit.
+7. **File set.** The `npm pack --dry-run` check in §2.1 → 33 files, no forbidden paths.
+8. **Full lifecycle rehearsal.** `pnpm publish --dry-run --no-git-checks` → same 33 files, public
    access, `latest` tag, npmjs.org registry, no auth required.
-8. **Lint the package metadata.** `npx publint@0.3.18` → exactly one accepted warning (§8.1).
-9. **README rendering.** `docs/` is not shipped, so any `docs/assets/*.png` relative link in
-   `README.md`/`README.zh.md` points at files that are not in the tarball. Either use absolute
-   `https://raw.githubusercontent.com/QiangXian/notix-dsh/main/...` URLs (only render for visitors if
-   the repository is public — see item 10) or keep the README text-only; verify the rendering on
+9. **Lint the package metadata.** `npx publint@0.3.18` → exactly one accepted warning (§8.1).
+10. **README rendering.** `docs/` is not shipped, so any `docs/assets/*.png` relative link in
+    `README.md`/`README.zh.md` points at files that are not in the tarball. Either use absolute
+    `https://raw.githubusercontent.com/QiangXian/notix-dsh/main/...` URLs (only render for visitors if
+   the repository is public — see item 11) or keep the README text-only; verify the rendering on
    npmjs.com after publish.
-10. **Repository reachability.** The repository/homepage/bugs links must resolve for anonymous
+11. **Repository reachability.** The repository/homepage/bugs links must resolve for anonymous
     visitors; check with §3's two `curl` probes. Do not publish pointing at a private or placeholder
-    repository.
-11. **README.zh.md** is included for repository/package completeness; npmjs.com renders the primary
+    repository. The repository is public and its About panel (description, homepage, topics) is set.
+12. **README.zh.md** is included for repository/package completeness; npmjs.com renders the primary
     `README.md` only.
-12. **2FA / account.** `npm whoami` returns the owner account; OTP available.
-13. **No secrets or machine-specific paths** in the files being released (`grep -R "/Users/" lib
+13. **2FA / account.** `npm whoami` returns the owner account; OTP available.
+14. **No secrets or machine-specific paths** in the files being released (`grep -R "/Users/" lib
     scripts locale README.md`).
 
-Optional but recommended: record the release in a Git tag and a changelog or GitHub Release. This
-repository has no `CHANGELOG.md`; a GitHub Release with the diff link is enough.
+Optional but recommended: tag the commit (`git tag v0.3.0`) and publish a GitHub Release with the
+`CHANGELOG.md` entry for the version; the release notes are the public record of what shipped.
 
 ---
 

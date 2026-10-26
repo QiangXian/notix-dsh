@@ -117,6 +117,8 @@ pnpm notify-test:win  # Windows
 
 `prepack` runs `pnpm build`, so `npm pack` and `npm publish` also work from a checkout where `lib/` does not exist. `build:check` never writes into the project and does not depend on Git metadata. `notify-test` and `notify-test:win` post real notifications and are never part of `pnpm test`.
 
+CI runs the same gate: `.github/workflows/verify.yml` executes `pnpm install --frozen-lockfile` and `pnpm verify` on Node 22 and 24 for every push and pull request. Dependabot keeps the npm and GitHub Actions dependencies current, and `.github/ISSUE_TEMPLATE/` collects the platform details notification bugs need. `prepublishOnly` repeats `pnpm verify` before every publish, so CI and the release both use one definition of "green".
+
 ## DSH Client module boundary
 
 The generated Client is a classic script, not an ES module. It registers exactly one `window.__ModuleLoader__.load({ id, factory })` entry. The factory synchronously returns `module.exports` with `NS`, `apply`, and `inject`.

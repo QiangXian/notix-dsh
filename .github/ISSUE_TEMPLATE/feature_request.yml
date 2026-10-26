@@ -1,0 +1,58 @@
+name: Feature request
+description: Suggest a new trigger, channel backend, configuration option or platform.
+title: '[feature] '
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Notix stays deliberately small: it is a pure observer that never answers approvals, never
+        writes session events and never blocks the agent. Proposals that keep that boundary are very
+        welcome.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do that Notix does not support today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: The behaviour, configuration field, trigger or channel you would like.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Existing workarounds, other plugins, or why the current behaviour is not enough.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Trigger / notification rule
+        - macOS channel
+        - Windows channel
+        - New platform / channel adapter
+        - Settings card / configuration
+        - '`ctx.notix` service API'
+        - Documentation / packaging
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and the README to make sure this is not already supported.
+          required: true
+        - label: This request keeps Notix a pure observer (no approvals, no session writes, no agent blocking).
+          required: true

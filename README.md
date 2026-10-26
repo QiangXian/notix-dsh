@@ -4,6 +4,7 @@
 
 [![npm version](https://img.shields.io/npm/v/notix-dsh)](https://www.npmjs.com/package/notix-dsh)
 [![npm downloads](https://img.shields.io/npm/dm/notix-dsh)](https://www.npmjs.com/package/notix-dsh)
+[![verify](https://github.com/QiangXian/notix-dsh/actions/workflows/verify.yml/badge.svg)](https://github.com/QiangXian/notix-dsh/actions/workflows/verify.yml)
 [![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-5B8DEF)](#platform-support)
 [![node](https://img.shields.io/badge/node-%5E22.18%20%7C%7C%20%3E%3D24-339933?logo=node.js&logoColor=white)](#requirements)
 [![license](https://img.shields.io/badge/license-MIT-green)](https://github.com/QiangXian/notix-dsh/blob/main/LICENSE)
@@ -451,7 +452,9 @@ See the [development guide](https://github.com/QiangXian/notix-dsh/blob/main/doc
 
 ## Contributing
 
-Issues and pull requests are welcome at [QiangXian/notix-dsh](https://github.com/QiangXian/notix-dsh). Read the [development guide](https://github.com/QiangXian/notix-dsh/blob/main/docs/DEVELOPMENT.md), run `pnpm verify` before opening a PR, and never commit `lib/` — it is generated from `src/`.
+Issues and pull requests are welcome at [QiangXian/notix-dsh](https://github.com/QiangXian/notix-dsh). Start with [CONTRIBUTING.md](https://github.com/QiangXian/notix-dsh/blob/main/CONTRIBUTING.md), read the [development guide](https://github.com/QiangXian/notix-dsh/blob/main/docs/DEVELOPMENT.md), run `pnpm verify` before opening a PR, and never commit `lib/` — it is generated from `src/`.
+
+Release history is in [CHANGELOG.md](https://github.com/QiangXian/notix-dsh/blob/main/CHANGELOG.md); releases are cut by the maintainer following the [publishing runbook](https://github.com/QiangXian/notix-dsh/blob/main/docs/PUBLISHING.md). Report security issues privately as described in [SECURITY.md](https://github.com/QiangXian/notix-dsh/blob/main/SECURITY.md); all project spaces follow the [code of conduct](https://github.com/QiangXian/notix-dsh/blob/main/CODE_OF_CONDUCT.md).
 
 ## License
 

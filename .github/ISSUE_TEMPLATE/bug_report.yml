@@ -1,0 +1,122 @@
+name: Bug report
+description: Something is broken — a notification is missing, duplicated, malformed, or the plugin fails to load.
+title: '[bug] '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Notification problems are usually OS-specific, so please fill in the
+        environment fields precisely.
+
+        ⚠️ For security issues, do **not** open a public issue — use the
+        [private security advisory](https://github.com/QiangXian/notix-dsh/security/advisories/new)
+        instead.
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS
+        - Windows 11
+        - Windows 10
+        - Linux / other
+    validations:
+      required: true
+
+  - type: input
+    id: dsh-version
+    attributes:
+      label: DeepSeek Harness version
+      description: Version reported by the desktop app or `dsh --version` (must satisfy `engines.dsh`).
+      placeholder: '0.2.1-rc.3'
+    validations:
+      required: true
+
+  - type: input
+    id: notix-version
+    attributes:
+      label: notix-dsh version
+      placeholder: '0.3.0'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: Install method
+      options:
+        - Web GUI Plugins page
+        - '`dsh plugin --profile <name> add notix-dsh`'
+        - '`link:` install from a repo clone'
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: channel
+    attributes:
+      label: Notification channel involved
+      options:
+        - macOS system channel
+        - Windows system channel
+        - Both / unknown
+        - Plugin does not load at all
+    validations:
+      required: true
+
+  - type: input
+    id: macos-backend
+    attributes:
+      label: macOS delivery backend (macOS only)
+      description: Which backend is in use — signed helper, terminal-notifier, alerter, or osascript?
+      placeholder: 'osascript (default fallback)'
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The notification/behaviour you expected and what you got instead.
+      placeholder: |
+        Expected: a toast when the agent finishes a long turn.
+        Actual: no toast; the Host log says ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Configure ...
+        2. Run a turn that ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Host log lines
+      description: Lines containing `notix:` from the DSH Host log; redact session titles and paths if needed.
+      render: text
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant configuration
+      description: 'The `id: notix` entry from the profile''s `cordis.patch.yml` (redact private values).'
+      render: yaml
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and the README troubleshooting section.
+          required: true
+        - label: I am running a supported version (`engines.dsh` range) and restarted DSH after installing.
+          required: true
+        - label: If this is a security problem, I will report it privately instead of here.
+          required: true
