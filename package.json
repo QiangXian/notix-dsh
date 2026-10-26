@@ -1,7 +1,7 @@
 {
   "name": "notix-dsh",
-  "version": "0.2.0",
-  "description": "Desktop notifications and built-in settings UI for DeepSeek Harness.",
+  "version": "0.3.0",
+  "description": "Desktop notifications and a built-in settings UI for DeepSeek Harness, with native macOS and Windows channels.",
   "type": "module",
   "packageManager": "pnpm@10.26.2",
   "main": "lib/index.js",
@@ -36,6 +36,7 @@
     "smoke": "node scripts/smoke-client.mjs",
     "test:ui": "node scripts/smoke-client.mjs",
     "notify-test": "node scripts/test-macos-notification.mjs",
+    "notify-test:win": "node scripts/test-windows-notification.mjs",
     "prepack": "pnpm build"
   },
   "icon": "./icon.png",
@@ -72,8 +73,20 @@
   "keywords": [
     "dsh",
     "dsh-plugin",
+    "deepseek-harness",
     "notification",
-    "settings-ui",
-    "deepseek-harness"
-  ]
+    "desktop-notifications",
+    "macos",
+    "windows",
+    "toast",
+    "settings-ui"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/QiangXian/notix-dsh.git"
+  },
+  "homepage": "https://github.com/QiangXian/notix-dsh#readme",
+  "bugs": {
+    "url": "https://github.com/QiangXian/notix-dsh/issues"
+  }
 }

@@ -10,7 +10,7 @@ import { randomUUID } from 'node:crypto'
 import { NotixStore } from './store.js'
 import { ChannelRegistry } from './channels.js'
 import { renderNotification } from './render.js'
-import { MacosChannel } from '../channels/macos.js'
+import { createPlatformChannels } from '../channels/index.js'
 
 /** Parse "HH:MM" into minutes since midnight; invalid input yields undefined. */
 function parseClock(text) {
@@ -48,8 +48,8 @@ export class NotixCore {
     this.jobStarts = new Map()
     /** @type {Map<string, Set<string>>} sessionId → reasons the agent is blocked on the user */
     this.busy = new Map()
-    /** Disposer of the registered macOS channel, when enabled. */
-    this.macosRegistration = undefined
+    /** Disposers of the platform channel adapters registered for this configuration. */
+    this.channelRegistrations = []
   }
 
   /**
@@ -89,17 +89,28 @@ export class NotixCore {
     this.syncChannels()
   }
 
-  /** Register or unregister built-in channels to match the live configuration. */
+  /**
+   * Register the built-in channel for the current platform, or none when the
+   * platform has no adapter or its channel is disabled. Re-registering drops
+   * the previous adapters so configuration edits (backend paths, sound, ...)
+   * take effect immediately.
+   */
   syncChannels() {
-    const macosEnabled = this.config.channels?.macos?.enabled === true
-    if (macosEnabled && this.macosRegistration === undefined) {
-      this.macosRegistration = this.channels.register(
-        new MacosChannel(() => this.config.channels.macos, this.logger),
-      )
-    } else if (!macosEnabled && this.macosRegistration !== undefined) {
-      this.macosRegistration()
-      this.macosRegistration = undefined
+    for (const dispose of this.channelRegistrations) dispose()
+    this.channelRegistrations = []
+    const { configKey, channels } = createPlatformChannels(
+      (key) => this.config.channels?.[key],
+      this.logger,
+    )
+    if (configKey === undefined) {
+      this.logger?.info(`notix: no built-in notification channel for platform "${process.platform}"`)
+      return
     }
+    if (channels.length === 0) {
+      this.logger?.info(`notix: the ${configKey} notification channel is disabled`)
+      return
+    }
+    for (const channel of channels) this.channelRegistrations.push(this.channels.register(channel))
   }
 
   /**

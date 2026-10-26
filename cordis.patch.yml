@@ -39,3 +39,7 @@
             enabled: true
             sound: true
             clickToOpen: true
+          windows:
+            enabled: true
+            sound: true
+            clickToOpen: true

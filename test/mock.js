@@ -157,7 +157,12 @@ export function createMockContext(options = {}) {
 export async function createCore(options = {}) {
   const clock = installClock(options.startAt)
   const ctx = createMockContext({ ...options, clock })
-  const config = resolveConfig({ channels: { macos: { enabled: false } }, ...(options.config ?? {}) })
+  // Both built-in channels are disabled so an automated run never posts a real
+  // notification or spawns a platform helper, whatever OS the suite runs on.
+  const config = resolveConfig({
+    channels: { macos: { enabled: false }, windows: { enabled: false } },
+    ...(options.config ?? {}),
+  })
   const core = new NotixCore(ctx, config, ctx.logger())
   await core.start()
   const notifications = []

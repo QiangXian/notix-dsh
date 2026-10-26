@@ -26,7 +26,10 @@ const DEFAULTS = {
     error: { enabled: true, cooldownMs: 60_000, toolErrors: false, toolTimeout: false },
     completion: { enabled: true, minDurationMs: 180_000, jobs: false },
   },
-  macos: { enabled: true, sound: true, clickToOpen: true, baseUrl: '' },
+  channels: {
+    macos: { enabled: true, sound: true, clickToOpen: true, baseUrl: '' },
+    windows: { enabled: true, sound: true, clickToOpen: true, baseUrl: '', appId: '', icon: '' },
+  },
 }
 
 const TRIGGER_GROUP_KEYS = ['approval', 'userQuestion', 'longTask', 'error', 'completion']
@@ -39,6 +42,24 @@ function group(value, fallback) {
   return { ...fallback, ...(value || {}) }
 }
 
+/**
+ * The notification channel matching the platform the GUI runs on.
+ *
+ * Detection reads `navigator.userAgent`, falling back to `window.navigator` for
+ * renderers that only stub the window object. `navigator` is unavailable in the
+ * Node vm the UI tests render in, and unknown user agents carry no platform
+ * information, so both fall back to macOS: the card then still renders one
+ * complete channel section (without the Windows-only fields) instead of a gap.
+ * @returns {'macos' | 'windows'} configuration group name of the channel.
+ */
+export function detectPlatformChannel() {
+  const nav = globalThis.navigator ?? globalThis.window?.navigator
+  const userAgent = nav ? String(nav.userAgent ?? '') : ''
+  if (/Windows/i.test(userAgent)) return 'windows'
+  if (/Mac/i.test(userAgent)) return 'macos'
+  return 'macos'
+}
+
 /** Read the one-line plugin summary from accepted, persisted form values. */
 function summarize(value) {
   const snapshot = value || {}
@@ -46,11 +67,12 @@ function summarize(value) {
   const enabledCount = TRIGGER_GROUP_KEYS.filter(
     (key) => group(triggers[key], DEFAULTS.triggers[key]).enabled,
   ).length
+  const platform = detectPlatformChannel()
 
   return {
     enabledCount,
     quietEnabled: group(snapshot.quietHours, DEFAULTS.quietHours).enabled,
-    macosEnabled: group((snapshot.channels || {}).macos, DEFAULTS.macos).enabled,
+    channelEnabled: group((snapshot.channels || {})[platform], DEFAULTS.channels[platform]).enabled,
   }
 }
 
@@ -74,7 +96,7 @@ export function NotixCard(props) {
   if (props.view === 'summary') {
     if (snap.status !== 'ready' || snap.value === undefined) return t('description')
     const summary = summarize(snap.value)
-    return `${t('summaryTriggers')}: ${summary.enabledCount}/5 · ${t('summaryQuietHours')}: ${summary.quietEnabled ? t('summaryOn') : t('summaryOff')} · ${t('summaryChannel')}: ${summary.macosEnabled ? t('summaryOn') : t('summaryOff')}`
+    return `${t('summaryTriggers')}: ${summary.enabledCount}/5 · ${t('summaryQuietHours')}: ${summary.quietEnabled ? t('summaryOn') : t('summaryOff')} · ${t('summaryChannel')}: ${summary.channelEnabled ? t('summaryOn') : t('summaryOff')}`
   }
 
   if (snap.status === 'loading') return h('div', { className: 'notix-card' }, t('loading'))
@@ -105,7 +127,8 @@ export function NotixCard(props) {
   const longTask = group(triggers.longTask, DEFAULTS.triggers.longTask)
   const error = group(triggers.error, DEFAULTS.triggers.error)
   const completion = group(triggers.completion, DEFAULTS.triggers.completion)
-  const macos = group((value.channels || {}).macos, DEFAULTS.macos)
+  const platformChannel = detectPlatformChannel()
+  const channel = group((value.channels || {})[platformChannel], DEFAULTS.channels[platformChannel])
 
   const triggerSection = h(
     Section,
@@ -322,39 +345,67 @@ export function NotixCard(props) {
     ),
   )
 
+  const channelFields = [
+    h(ToggleField, {
+      key: 'ch-sound',
+      label: t('channelSound'),
+      checked: channel.sound,
+      disabled: disabled || !channel.enabled,
+      onChange: (next) => commit(['channels', platformChannel, 'sound'], next),
+    }),
+    h(ToggleField, {
+      key: 'ch-click',
+      label: t('channelClickToOpen'),
+      checked: channel.clickToOpen,
+      disabled: disabled || !channel.enabled,
+      onChange: (next) => commit(['channels', platformChannel, 'clickToOpen'], next),
+    }),
+    h(TextField, {
+      key: 'ch-url',
+      id: 'notix-ch-url',
+      label: t('channelBaseUrl'),
+      hint: t('channelBaseUrlHint'),
+      value: channel.baseUrl,
+      disabled: disabled || !channel.enabled || !channel.clickToOpen,
+      onCommit: (next) => commit(['channels', platformChannel, 'baseUrl'], next),
+    }),
+  ]
+
+  if (platformChannel === 'windows') {
+    // Windows applies the app id and icon to every toast, so these two inputs
+    // depend on the channel switch only (unlike the click-to-open URL).
+    const brandingDisabled = disabled || !channel.enabled
+    channelFields.push(
+      h(TextField, {
+        key: 'ch-appid',
+        id: 'notix-win-appid',
+        label: t('channelAppId'),
+        hint: t('channelAppIdHint'),
+        value: channel.appId,
+        disabled: brandingDisabled,
+        onCommit: (next) => commit(['channels', 'windows', 'appId'], next),
+      }),
+      h(TextField, {
+        key: 'ch-icon',
+        id: 'notix-win-icon',
+        label: t('channelIcon'),
+        hint: t('channelIconHint'),
+        value: channel.icon,
+        disabled: brandingDisabled,
+        onCommit: (next) => commit(['channels', 'windows', 'icon'], next),
+      }),
+    )
+  }
+
   const channelSection = h(
     Section,
     { title: t('sectionChannel') },
     h(Trigger, {
-      title: t('channelEnabled'),
-      checked: macos.enabled,
+      title: platformChannel === 'windows' ? t('channelEnabledWindows') : t('channelEnabledMacos'),
+      checked: channel.enabled,
       disabled,
-      onChange: (next) => commit(['channels', 'macos', 'enabled'], next),
-      fields: [
-        h(ToggleField, {
-          key: 'ch-sound',
-          label: t('channelSound'),
-          checked: macos.sound,
-          disabled: disabled || !macos.enabled,
-          onChange: (next) => commit(['channels', 'macos', 'sound'], next),
-        }),
-        h(ToggleField, {
-          key: 'ch-click',
-          label: t('channelClickToOpen'),
-          checked: macos.clickToOpen,
-          disabled: disabled || !macos.enabled,
-          onChange: (next) => commit(['channels', 'macos', 'clickToOpen'], next),
-        }),
-        h(TextField, {
-          key: 'ch-url',
-          id: 'notix-ch-url',
-          label: t('channelBaseUrl'),
-          hint: t('channelBaseUrlHint'),
-          value: macos.baseUrl,
-          disabled: disabled || !macos.enabled || !macos.clickToOpen,
-          onCommit: (next) => commit(['channels', 'macos', 'baseUrl'], next),
-        }),
-      ],
+      onChange: (next) => commit(['channels', platformChannel, 'enabled'], next),
+      fields: channelFields,
     }),
   )
 

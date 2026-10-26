@@ -8,11 +8,13 @@
 >
 > 计划日期：2026-10-24。所有用例当前状态均为“未执行”。
 >
-> 计划规模：15 个用例模块、228 条场景条目（P0 42 / P1 174 / P2 12）；参数化组合在执行时继续展开。
+> 2026-10-26 更新：Host 通知层已重构为 `src/host/channels/` 模块化渠道（`base.js`、`shared.js`、`macos.js`、`windows.js`、`toast.ps1`、`index.js`），新增 Windows WinRT toast 渠道，且只注册当前平台的渠道。本计划补充 WIN-01～WIN-08，并按平台选择语义更新 MAC-01、PKG-12、CHAN-13、UI/NFR 等相关口径。
+>
+> 计划规模：16 个用例模块、236 条场景条目（P0 45 / P1 179 / P2 12）；参数化组合在执行时继续展开。
 
 ## 1. 目标与验收原则
 
-本计划依据当前仓库的 Host 插件、浏览器设置 UI、macOS 渠道、通知助手、持久化、安装脚本和现有测试资产编写，目标是：
+本计划依据当前仓库的 Host 插件、浏览器设置 UI、macOS/Windows 渠道、通知助手与 Windows toast 脚本、持久化、安装脚本和现有测试资产编写，目标是：
 
 1. 覆盖从 **DSH 事件/投影 → 触发规则 → 去重/冷却/免打扰 → 渲染 → 排队 → 渠道投递 → 历史记录** 的完整链路。
 2. 覆盖 **安装/加载 → 设置 UI → 配置持久化与热更新 → Host 即时生效 → 重载/卸载** 的完整链路。
@@ -25,13 +27,13 @@
 - 本文件列出的每项能力至少映射到一条自动化、集成或实机用例；参数化矩阵必须完整展开，不得只抽测一个组合。
 - P0/P1 用例通过率 100%；无未关闭的阻断、严重数据泄露或 Agent 执行受干扰问题。
 - 所有失败均附带配置、事件序列、时间线、通知历史和渠道日志；文档默认值与代码有效默认值一致。
-- 覆盖率用于发现遗漏，不代替场景验收。建议核心 `lib/core`、`lib/triggers` 分支覆盖率不低于 90%，macOS 后端选择分支通过替身覆盖 100%。
+- 覆盖率用于发现遗漏，不代替场景验收。建议核心 `lib/core`、`lib/triggers` 分支覆盖率不低于 90%，macOS/Windows 渠道后端与平台选择分支通过替身覆盖 100%。
 
 ### 1.2 范围边界
 
-**范围内：** 本包公开行为、与 DSH 的集成边界、内置 macOS 渠道、随包通知助手及其构建/安装脚本、打包产物和设置 UI。
+**范围内：** 本包公开行为、与 DSH 的集成边界、内置 macOS/Windows 渠道、随包通知助手与 Windows toast 脚本及其构建/安装脚本、打包产物和设置 UI。
 
-**范围外：** DSH/Agent/LLM 自身的完整功能回归、审批或提问业务决策正确性、第三方 notifier 内部实现、macOS 通知中心内部实现、插件市场服务端。只验证它们与 Notix 的契约和相互影响。
+**范围外：** DSH/Agent/LLM 自身的完整功能回归、审批或提问业务决策正确性、第三方 notifier 内部实现、macOS 通知中心与 Windows 通知中心/Toast 平台内部实现、PowerShell 运行时内部实现、插件市场服务端。只验证它们与 Notix 的契约和相互影响。
 
 ### 1.3 UX 验收补充
 
@@ -65,6 +67,10 @@ userQuestions projection ──────────────────�
          → 先写历史（pending）→ 全局串行队列 → 各启用渠道顺序投递
          → 超时/重试/熔断 → 更新 delivered/channels → 可选持久化
 
+平台选择：BUILTIN_CHANNELS（darwin → macos / win32 → windows）
+        → 仅当当前平台渠道 enabled 时注册 → 其他平台不注册、不探测、不 spawn 进程
+        → 配置热更新时注销旧渠道并按新配置重建
+
 设置 UI → configForms.mutate → profile 配置 → loader/volatile-update
         → readConfig/unwrapVolatile → core.replaceConfig → 新规则/渠道生效
 ```
@@ -84,7 +90,8 @@ userQuestions projection ──────────────────�
 | turn/Agent 错误 | 开；同会话冷却 60 秒 | 相同 | 相同 |
 | 普通工具错误 / 工具超时 | 均关，需分别开启 | 相同 | 工具失败写为关 |
 | 免打扰 | 关；23:00–08:00；允许 urgent | 相同 | 只概述能力 |
-| macOS 渠道 | 开；声音开；点击跳转开；URL/助手路径/图标路径为空时走默认 | 相同 | macOS 为 v1 渠道 |
+| macOS 渠道 | 仅 darwin 注册；开；声音开；点击跳转开；URL/助手路径/图标路径为空时走默认 | 相同 | 平台选择：仅 darwin 注册（非 darwin 不 spawn） |
+| Windows 渠道 | 仅 win32 注册；开；声音开；点击跳转开；`baseUrl`/`appId`/`icon` 为空时走默认（`Notix.DSH` / 随包鲸鱼图标） | 相同 | 平台选择：仅 win32 注册（非 win32 不 spawn） |
 
 ### 2.3 macOS 实际后端矩阵
 
@@ -97,7 +104,20 @@ userQuestions projection ──────────────────�
 | 3 | PATH 中存在 `alerter` | `--sound default` | 当前未传自定义图标 | 当前未实现 | 错误抛出，无自动换后端 |
 | 4 | 以上均不可用，使用 `osascript` | Glass / 无声音 | Script Editor 图标 | 当前未实现 | 错误抛出 |
 
-共同行为：非 macOS 直接报错；渠道错误交由 ChannelRegistry 做每次最多 4 次尝试、退避和熔断。选中后端发送失败时，当前实现**不会**自动降级到下一后端。
+共同行为：非 darwin 时该渠道不被注册；即使直接实例化适配器，`send` 也会在探测/执行前报“仅 macOS”且不启动任何进程。渠道错误交由 ChannelRegistry 做每次最多 4 次尝试、退避和熔断。选中后端发送失败时，当前实现**不会**自动降级到下一后端。
+
+### 2.4 Windows 渠道（windows-system）实现基线
+
+Windows 渠道只有一种后端：启动 `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File <解析后的包路径>/channels/toast.ps1`，通过 `NOTIX_*` 环境变量传标题/正文/appId/显示名/图标/URL/声音/tag/group，避免命令行与 shell 引号问题；脚本用 WinRT `ToastGeneric` 模板发送 toast。要点：
+
+- **文案：** 标题 + 正文按换行拆成最多 3 行，最多 4 个 `<text>`（正文为空时仅 1 个标题）；空行跳过、超出丢弃；所有文本经 XML 转义。
+- **品牌：** 发送前把 `HKCU\Software\Classes\AppUserModelId\<appId>`（默认 `Notix.DSH`）的 `DisplayName` 写为 `Notix`，图标文件存在时写 `IconUri`；重复发送等值重写，幂等。
+- **图标：** 默认随包鲸鱼图标（`assets/notifier-icon.png`），以 `file:///` URI 作为 `appLogoOverride`；`channels.windows.icon` 可覆盖；文件不存在时只省略图标，不影响文字 toast。
+- **声音：** `sound=true` → `ms-winsoundevent:Notification.Default`；否则 `<audio silent="true"/>`。
+- **点击：** 仅 `clickToOpen=true` 且 `baseUrl` 非空时生成 `activationType="protocol" launch="<baseUrl>"`。
+- **平台：** 非 win32 不注册、不探测、不启动 `powershell.exe`、不写注册表；即使直接调用适配器也会在启动进程前报“仅 Windows”。
+
+失败处理：脚本非零退出（含 stderr 消息）→ 渠道抛错 → ChannelRegistry 重试/熔断；不阻断 Agent。自动化测试只使用注入的 runner / 纯函数断言 argv/env/XML，不发送真实 toast；真实 toast 仅由 `pnpm notify-test:win` 或 WIN 实机用例触发。
 
 ## 3. 执行前必须确认的基线与风险
 
@@ -109,12 +129,12 @@ userQuestions projection ──────────────────�
 | BL-02 | README 写“按会话限流”，实现仅对 `kind=error` 做冷却；其他类型只有 dedupe。 | 明确是否需要通用会话级限流；若不需要，修正文档并按错误冷却验收。 |
 | BL-03 | 问题触发器注释称重载时不通知已有问题，但 seed 复用 `observe()`，可能产生首次通知。 | 建议重载只恢复状态、不重复打扰；新出现的问题仍通知。审批重载后的提醒恢复策略也需明确。 |
 | BL-04 | 审批关闭时在 `markBusy` 前返回；多个并发审批只用一个 `approval` busy reason；审批没有 session-dispose 清理。 | busy 应表示真实等待状态，与通知开关解耦；最后一个阻塞原因解除才清 busy；销毁会话清理全部状态。 |
-| BL-05 | 热更新后既有审批/问题提醒和长任务定时器未必按新开关或新阈值重排；macOS 后端和路径检测被缓存。 | 明确“仅影响新事件”还是“立即影响在途事件”；UI 文案为“即时生效”，建议后者。 |
+| BL-05 | 热更新后既有审批/问题提醒和长任务定时器未必按新开关或新阈值重排；macOS/Windows 后端和路径检测被缓存。 | 明确“仅影响新事件”还是“立即影响在途事件”；UI 文案为“即时生效”，建议后者。 |
 | BL-06 | `long-task` 与 `completion` 都消费共享 `jobStarts`，且监听器顺序固定；跨会话相同 jobId/callId/approvalId 也可能碰撞。 | 一个结束事件不得让后续观察者丢失 label/duration；明确外部 ID 是否全局唯一，否则以 sessionId 联合隔离。 |
 | BL-07 | 免打扰在 dedupe 和历史之前直接丢弃；长 turn 看门狗只发一次，静默后不会在时段结束补发。 | 建议明确为“不投递、不记历史、不积压补发”；仍等待的问题是否继续后续提醒需单独验证。 |
 | BL-08 | README 的点击跳转/签名降级描述与后端实际能力不完全一致；Helper 存在但未授权时不会回退 osascript。UI 还写“baseUrl 留空使用默认地址”，实际空值不会传 `-open`。 | 以确认后的后端能力矩阵为准；明确发送失败是重试还是自动降级，以及空 URL 的真实语义。 |
 | BL-09 | `scripts/test-macos-notification.mjs` 调用了当前类中不存在的 `detectHelper()`。 | 正式执行前修复或替换自检入口；不能用该脚本当前状态作为渠道通过证据。 |
-| BL-10 | UI 的 30 个配置叶子只暴露 27 个，缺 `userQuestion.maxReminders`、`notifierApp`、`appIcon`；“发送测试通知”入口缺失（DEF-004 已移除永久禁用按钮），历史版本曾建议通过保存验证投递；quiet urgent 文案只提审批而未提问题。 | 三个缺失字段通过 profile patch 覆盖，是否补 UI 由产品决定；保存配置不得被当作已发送通知；不得出现禁用或未来能力的死控件；统一 urgent 文案与实际范围。 |
+| BL-10 | UI 按平台只暴露当前渠道与通用配置；`userQuestion.maxReminders`、macOS `notifierApp`/`appIcon` 未暴露，Windows 的 appId/icon 已暴露；“发送测试通知”入口缺失（DEF-004 已移除永久禁用按钮），历史版本曾建议通过保存验证投递；quiet urgent 文案只提审批而未提问题。 | 未暴露字段通过 profile patch 覆盖，是否补 UI 由产品决定；保存配置不得被当作已发送通知；不得出现禁用或未来能力的死控件；统一 urgent 文案与实际范围。 |
 | BL-11 | `verbosity` 实际只影响 error body；`minimal` 隐藏错误消息，但审批 reason、后台任务 label 等仍可能包含命令或路径，`normal` 也只是截断 error.message，并非完整命令/文件内容；渠道异常日志还可能带参数。 | 统一文档与实现，建立字段级隐私白名单和日志脱敏口径，再执行 secret canary 用例。 |
 | BL-12 | 本地 overlay 曾以固定绝对路径入库；已拆为入库模板 `dev/notix.patch.example.yml` + 被 `.gitignore` 忽略的 `dev/notix.patch.local.yml`。 | E2E 环境准备时生成指向受测 checkout 的临时 patch，不直接依赖本机实例路径。 |
 | BL-13 | 错误冷却中的 suppressed count 在窗口结束后是否应汇总到下一条，需要结合当前状态重置逻辑确认。 | 明确“合并提醒”的计数语义，并验证窗口内、跨窗口和重启后的行为。 |
@@ -127,8 +147,8 @@ userQuestions projection ──────────────────�
 
 ### 4.1 优先级
 
-- **P0：** 安装可用性、纯观察者、审批/提问主链路、Agent 故障隔离、隐私、配置写入破坏风险。
-- **P1：** 其余触发器、去重/冷却/免打扰、持久化、重试熔断、UI 全字段、macOS 各后端和重启恢复。
+- **P0：** 安装可用性、纯观察者、审批/提问主链路、Agent 故障隔离、隐私、配置写入破坏风险、平台选择与跨平台不误启动。
+- **P1：** 其余触发器、去重/冷却/免打扰、持久化、重试熔断、UI 全字段、macOS 各后端、Windows toast 渠道和重启恢复。
 - **P2：** 扩展浏览器/系统组合、视觉细节、极端 Unicode、长稳和低频边界。
 
 优先级表示执行顺序，不等于缺陷严重度。安全与 Agent 阻断问题无论来自哪条用例都按高严重度处理。
@@ -141,12 +161,12 @@ userQuestions projection ──────────────────�
 | L1 单元/组件 | Node test、可控时钟、可控 timers、内存 storage、捕获型 channel | 规则、状态机、渲染、队列、重试、熔断 |
 | L2 Host 集成 | 真实 Cordis + 可控 sessions/projections/storage；事件序列驱动 | 生命周期、热更新、跨触发器、真实服务注入 |
 | L3 UI 组件 | React 测试支架 + ConfigFormController/Slots/Locale 仿真 | 渲染、交互、校验、状态与可访问性 |
-| L4 渠道集成 | 临时 PATH 中的可执行替身、临时 Helper/Home；严禁调用真实通知 | 进程参数、选择优先级、错误和平台分支 |
+| L4 渠道集成 | 注入式进程 runner、临时 PATH 中的可执行替身、临时 Helper/Home；严禁调用真实通知（含 powershell/toast） | 进程参数/env、选择优先级、平台选择、错误和平台分支 |
 | L5 DSH E2E | 隔离 profile，复用受测 DSH Web GUI，真实 Host/Client/Storage | 安装、两页面、热更新、真实 Agent 事件与重启 |
-| L6 macOS 实机 | 专门测试签名和通知权限，逐后端人工确认 | 横幅、声音、图标、点击、系统权限与 Focus |
+| L6 macOS/Windows 实机 | macOS 测试签名与通知权限、Windows PowerShell/WinRT toast，逐后端人工确认 | 横幅/Toast、声音、图标、点击、系统权限、Focus/免打扰 |
 | L7 非功能 | 事件风暴、多会话、故障注入、长稳、敏感数据 canary | 性能、资源、韧性、安全隐私 |
 
-现有 `pnpm test`、`pnpm smoke` 可作为未来自动化入口，但应先补足缺口；本轮不运行。真实通知脚本只能在 L6 明确授权后单独使用。
+现有 `pnpm test`、`pnpm smoke` 可作为未来自动化入口，但应先补足缺口；本轮不运行。真实通知脚本（`pnpm notify-test` / `pnpm notify-test:win`）只能在 L6 明确授权后单独使用。
 
 ### 4.3 环境矩阵
 
@@ -155,11 +175,12 @@ userQuestions projection ──────────────────�
 | DSH | 支持范围最低版本、当前目标版本、范围内最新版本 | `>=0.2.1-rc.2 <0.3.0`；范围外版本验证清晰拒绝或不支持提示 |
 | 安装 | registry/tarball 安装、`link:` 开发安装、旧双包升级 | 全新 profile 与已有 `id:notix` 配置各一套 |
 | 运行 | 真实 Cordis、真实 DSH Host + Web GUI | storageDomain 有/无/故障三类 |
-| macOS | 当前支持版本，Apple Silicon；若支持 Intel 则补 Intel | Helper 声明最低 macOS 11，实际矩阵还需满足 DSH 自身要求 |
-| 通知后端 | Helper、terminal-notifier、alerter、osascript | 每次只让目标后端可见，避免优先级串扰 |
+| macOS | 当前支持版本，Apple Silicon；若支持 Intel 则补 Intel | Helper 声明最低 macOS 11，实际矩阵还需满足 DSH 自身要求；仅 darwin 注册渠道 |
+| Windows | Windows + 内置 Windows PowerShell（`powershell.exe`）与 WinRT toast；使用临时 appId/图标 | 通知权限、Focus/免打扰、无 PowerShell、仅 win32 注册渠道 |
+| 通知后端 | macOS：Helper、terminal-notifier、alerter、osascript；Windows：PowerShell WinRT toast | 每次只让目标后端/平台可见，避免优先级串扰 |
 | 浏览器 | DSH 正式支持的 Chromium 浏览器 | Safari/Firefox 仅在 DSH 支持时纳入；移动窄屏做布局检查 |
 | 主题/语言 | Light/Dark × 中文/English | UI 语言与通知 `language` 分开验证 |
-| 架构与权限 | 正常用户、无通知权限、只读配置部署 | 不使用真实用户生产 profile 或真实助手安装目录做破坏性测试 |
+| 架构与权限 | 正常用户、无通知权限、无 PowerShell、只读配置部署 | 不使用真实用户生产 profile、真实助手安装目录或真实 AUMID 做破坏性测试 |
 
 Node/pnpm 版本在正式执行前按所选 DSH 的支持矩阵锁定，不在本计划中虚构额外版本要求。
 
@@ -167,11 +188,11 @@ Node/pnpm 版本在正式执行前按所选 DSH 的支持矩阵锁定，不在�
 
 - 会话：`s1`、`s2`，含同名标题、空标题、超长标题和相同外部 callId/jobId/approvalId 的隔离数据。
 - 时间：阈值前 1ms、恰好阈值、阈值后 1ms；午夜、跨天免打扰、24 小时 dedupe 边界；统一可控时钟。
-- 文本：空值、纯空白、换行、引号、反斜杠、Emoji/CJK、超长字符串、`$()`/反引号/AppleScript 片段等只作为字面值的数据。
+- 文本：空值、纯空白、换行、引号、反斜杠、XML 特殊字符（`& < > " '`）、Emoji/CJK、超长字符串、`$()`/反引号/AppleScript/XML 片段等只作为字面值的数据。
 - 隐私：在 message、reason、label、sessionTitle、baseUrl、日志中放置不同 `SECRET_*` canary，逐字段断言出现或隐藏的位置。
 - 配置：每一开关的 on/off、数值 0/下限/上限/越界、直接 patch 与 UI 两种来源；除默认值专项外显式配置。
-- 隔离：使用临时 HOME、临时 `NOTIX_APP_OUTPUT`、独立 DSH profile 和通知分组。不得为测试删除真实 `~/Applications/Notix.app`，不得输出签名私钥或 API Key。
-- 证据：事件序列、配置快照、通知调用参数、history 前后快照、timer 数、日志、截图/录屏和 Host 版本；真实通知用例还需权限状态。
+- 隔离：使用临时 HOME、临时 `NOTIX_APP_OUTPUT`、独立 DSH profile 和通知分组。不得为测试删除真实 `~/Applications/Notix.app`，不得输出签名私钥或 API Key。Windows 用例使用临时 `appId`（如 `Notix.DSH.Test<随机>`）与临时图标，不得删除或永久污染真实 `HKCU\Software\Classes\AppUserModelId\Notix.DSH`；自动化不得启动真实 `powershell.exe`。
+- 证据：事件序列、配置快照、通知调用参数、history 前后快照、timer 数、日志、截图/录屏和 Host 版本；真实通知用例还需权限状态，Windows 用例另附 toast XML、`NOTIX_*` env、注册表键快照与 PowerShell 版本。
 
 ## 5. 详细测试用例库
 
@@ -192,7 +213,7 @@ Node/pnpm 版本在正式执行前按所选 DSH 的支持矩阵锁定，不在�
 | PKG-09 | P0 | dispose 后再次发 session/projection/agent 事件、推进所有 timer、调用旧回调。 | 服务与全部订阅/提醒/看门狗清除，storage 关闭，无新通知、无未处理拒绝；重复 dispose 不破坏 Host。 |
 | PKG-10 | P1 | 热重载和进程重启，覆盖未读历史、未到期 dedupe、在途审批/问题/turn/job。 | 持久数据和配置按契约恢复；不重复打扰；在途状态按 BL-03 恢复或安全放弃，无幽灵定时器。 |
 | PKG-11 | P1 | 参数化 DSH 最低、当前、范围内最新和范围外版本。 | 支持版本功能一致；不支持版本不会静默以未知契约运行，错误可诊断。 |
-| PKG-12 | P1 | 仅生产依赖安装后在 macOS 与非 macOS 启动；非 macOS 保持默认渠道并发通知。 | 不依赖 devDependency；非 macOS 不执行 osascript，不错误阻断 Agent，渠道禁用/降级策略清晰。 |
+| PKG-12 | P1 | 仅生产依赖安装在目标平台与非目标平台启动；观察渠道注册与进程。 | 不依赖 devDependency；仅注册当前平台渠道：非 darwin 不注册/不执行 osascript，非 win32 不注册/不启动 powershell、不写注册表；不错误阻断 Agent，未注册渠道的配置保持不生效。 |
 | PKG-13 | P1 | 同一 Host 多会话并行加载与销毁其中一个会话，另一会话继续。 | 单例服务正常；会话状态互不误清，无重复订阅或跨会话通知。 |
 | PKG-14 | P2 | ctx.logger 正常、返回空值、抛错；渠道或渲染再次抛错。 | logger 回退可用，告警不会递归打崩通知或 Agent；日志不含不应出现的正文/密钥。 |
 
@@ -207,8 +228,8 @@ Node/pnpm 版本在正式执行前按所选 DSH 的支持矩阵锁定，不在�
 | CFG-05 | P1 | 对全部时长/冷却字段验证 -1、0、1、小数、NaN、Infinity、超大值。 | Schema 要求整数毫秒且不小于 0；0 的“禁用/立即”语义逐字段符合规则；非法输入不进入 Host。 |
 | CFG-06 | P1 | 对 approval/userQuestion 的 maxReminders 验证 -1、0、1、2、10、11、小数；审批同时走 UI/profile，用户问题先走 profile。 | 仅 0–10 整数合法；已暴露的 UI 与 profile 契约一致，0 表示不做重复提醒；用户问题若补 UI 后复用同一矩阵。 |
 | CFG-07 | P1 | quietHours from/to 输入合法 HH:MM、单数字小时、越界、空值、非字符串。 | 采用 BL-15 的统一格式契约；非法值不能意外开启/关闭整天免打扰，错误可诊断。 |
-| CFG-08 | P0 | UI 遍历修改 27 个已暴露 volatile 叶，其余 3 个经 profile 修改，分别触发 loader/volatile-update；保留 core/api.config 引用。 | 原引用看到新值，配置对象身份不被替换；无需 remount，profile 中保存相同值。 |
-| CFG-09 | P1 | 热切换 macos.enabled：off→on→off→on，期间发通知。 | 注册/注销幂等，不重复渠道；off 时无系统进程，历史 delivered/channels 与实际一致。 |
+| CFG-08 | P0 | UI 在当前平台卡片遍历修改所有已暴露 volatile 叶（macOS 卡片约 27 个；Windows 卡片另含 appId/icon），未暴露字段经 profile 修改，分别触发 loader/volatile-update；保留 core/api.config 引用。 | 原引用看到新值，配置对象身份不被替换；无需 remount，profile 中保存相同值；两平台卡片只写自身渠道路径，未暴露字段保持 profile 值。 |
+| CFG-09 | P1 | 按平台热切换 macos.enabled / windows.enabled：off→on→off→on，期间发通知。 | 注册/注销幂等，不重复渠道；off 时无系统进程，历史 delivered/channels 与实际一致。 |
 | CFG-10 | P1 | 热改 language、verbosity、quietHours、error.cooldownMs、completion.minDurationMs。 | 新事件立即用新规则；已生成历史不被回写；在途事件按 BL-05 处理。 |
 | CFG-11 | P1 | 热改审批/问题的 enabled、间隔、上限，以及长任务开关/阈值/jobs。 | 在途 timer 的取消、重排、上限和新建行为符合 BL-05；无重复 timer 或禁用后仍提醒。 |
 | CFG-12 | P1 | readConfig/replaceConfig/syncChannels 注入异常，随后再提交合法更新。 | 异常被告警隔离，不破坏上一次有效配置；后续合法更新可恢复，无未处理拒绝。 |
@@ -221,12 +242,12 @@ Node/pnpm 版本在正式执行前按所选 DSH 的支持矩阵锁定，不在�
 |---|---|---|---|
 | UI-01 | P0 | 加载浏览器 bundle 并执行 factory。 | 模块 id 唯一，导出 apply/inject/NS；依赖均可由 DSH 注入，无语法错误和额外未声明 require。 |
 | UI-02 | P1 | notix 配置服务出现、消失、再次出现；观察两个 slot。 | whileServed 正确挂载/卸载 `plugins.item` 与 `settings.plugins.tab`，顺序/id/label 正确，不重复注册。 |
-| UI-03 | P1 | 分别进入 Plugins 和 Settings→Plugins。 | 两处均能显示同一 Notix 配置；一处修改后另一处同步；不出现双份样式或双份卡片。 |
+| UI-03 | P1 | 分别进入 Plugins 和 Settings→Plugins；分别在 macOS、Windows 平台查看渠道区段。 | 两处均能显示同一 Notix 配置；一处修改后另一处同步；不出现双份样式或双份卡片；仅显示当前平台的渠道区段（Windows 含 AppID/图标字段，macOS 为原 macOS 区段）。 |
 | UI-04 | P1 | 模拟 loading、unavailable、ready 空值、ready 部分值、read-only。 | 各状态文案正确；部分值由默认补齐；加载/不可用不显示可误操作表单。 |
 | UI-05 | P1 | 参数化 0–5 个启用触发器、quiet/channel 开关，查看摘要与完整页。 | 两处摘要计数和开关一致，来自已接受快照而非未保存草稿。 |
-| UI-06 | P0 | 遍历每个已暴露的主开关、子开关、下拉框、时间和文本控件，记录 mutate path/value。 | 仅写目标路径；approval/userQuestion/longTask/error/completion、quiet、language、verbosity、sound/click/baseUrl 均正确。 |
+| UI-06 | P0 | 遍历每个已暴露的主开关、子开关、下拉框、时间和文本控件，记录 mutate path/value。 | 仅写目标路径；approval/userQuestion/longTask/error/completion、quiet、language、verbosity、sound/click/baseUrl 均正确；Windows 平台的 appId/icon 只写 `channels.windows.*`，不误写 `channels.macos.*`。 |
 | UI-07 | P1 | 关闭主开关、关闭 longTask.jobs、只读和保存中。 | 对应子字段保留可见但禁用；jobThreshold 还受 jobs 控制；所有禁用态不会产生 mutate。 |
-| UI-08 | P1 | 验证 UI 未暴露的 userQuestion.maxReminders、notifierApp、appIcon。 | 可按 BL-10 通过 profile 设置且 UI 不清空/覆盖这些值；若决定补 UI，则追加对应路径用例。 |
+| UI-08 | P1 | 验证 UI 未暴露的 userQuestion.maxReminders、macOS notifierApp/appIcon；Windows 平台验证 appId/icon 已暴露。 | 未暴露字段可按 BL-10 通过 profile 设置且 UI 不清空/覆盖这些值；Windows 的 appId/icon 可经 UI 写入且只影响 `channels.windows`；若决定补 UI，则追加对应路径用例。 |
 | UI-09 | P1 | 分钟字段输入 0、0.01、1.5、大值、负数、空串、空白、NaN、Infinity、科学计数法；另放入非 0.01 分钟精度的原始 ms 后直接 blur。 | 合法值正确换算并四舍五入为整数 ms；非法值不写 Host；空串行为符合 BL-15，不得静默变 0；未编辑不得仅因显示精度而改写原值。 |
 | UI-10 | P1 | 在审批 maxReminders 控件输入 0、1、10、11、-1、1.4、1.5、空串。 | 仅接受约定范围；取整策略与 Schema/文案一致；非法输入有错误提示且不提交。 |
 | UI-11 | P1 | 数字和文本分别通过 blur、Enter、重复 Enter、值未变 blur 提交，并记录 mutate 调用次数。 | 一次用户提交只写一次且值正确，Enter 后的 blur 不重复 mutate；未变化不多发；非法 Enter 不应通过失焦隐藏错误，合法 Enter 正常结束编辑。 |
@@ -239,11 +260,11 @@ Node/pnpm 版本在正式执行前按所选 DSH 的支持矩阵锁定，不在�
 | UI-18 | P1 | 卸载/重挂组件并检查订阅、style、timer 和事件监听。 | 订阅全部释放；相同样式最多一份；无 setState-after-unmount 或重复保存。 |
 | UI-19 | P1 | 键盘遍历 Switch/input/select/button，检查 label、focus、status live region、对比度。 | 全部可操作控件可访问且名称唯一；错误/保存状态可朗读；焦点可见，不只靠颜色表达。 |
 | UI-20 | P2 | Light/Dark × 中/英文 × 宽/窄视口，覆盖长错误和长 URL。 | 两页面无溢出、遮挡、截断关键控件；主题变量有效；保留截图基线。 |
-| UI-21 | P1 | 检查设置页不存在“发送测试通知”或任何禁用/未来能力的死控件；仅保存任一配置并观察是否发送通知。 | 不出现死控件，也不宣称尚未提供的 Host API；保存配置本身不等于发送测试通知；渠道验证通过受控脚本（`pnpm notify-test`）或后续 Host API 完成。 |
+| UI-21 | P1 | 检查设置页不存在“发送测试通知”或任何禁用/未来能力的死控件；仅保存任一配置并观察是否发送通知。 | 不出现死控件，也不宣称尚未提供的 Host API；保存配置本身不等于发送测试通知；渠道验证通过受控脚本（按平台 `pnpm notify-test` / `pnpm notify-test:win`）或后续 Host API 完成。 |
 | UI-22 | P2 | 页面刷新、客户端重载和受支持的浏览器组合。 | bundle 重建后刷新可加载；不承诺未经 watcher 验证的 HMR；状态恢复、控制台无未处理异常。 |
 | UI-23 | P0 | 从 Plugins 列表点击 Notix 进入详情，再从 Settings → Plugins 打开 Notix 页签；捕获控制台与 DOM。 | 两个入口都渲染完整卡片，不空白、不崩溃、无 `getSnapshot is not a function`；页面标题摘要只出现一次。 |
 | UI-24 | P1 | 检查完整设置页的摘要、提示文案和控件可用性。 | 摘要不重复；“留空则不启用点击跳转”等提示与实际行为一致；无永久禁用或未来能力的死控件。 |
-| UI-25 | P1 | 关闭 clickToOpen 后检查 URL 输入；开启后再检查。 | URL 字段随主开关禁用/启用，禁用时不可编辑且视觉清晰，保存后刷新保持该状态。 |
+| UI-25 | P1 | 关闭 clickToOpen 后检查 URL 输入；开启后再检查；Windows 平台同时检查 appId/icon 字段。 | URL 字段随主开关禁用/启用，禁用时不可编辑且视觉清晰，保存后刷新保持该状态；Windows 的 AppID/icon 字段不受 clickToOpen 开关影响。 |
 | UI-26 | P1 | 检查长任务与完成两组中的后台任务开关、阈值和完成时长文案。 | 两组开关有不同且可理解的标签，术语“轮次/任务”一致，用户能区分超时提醒与结束提醒。 |
 
 ### 5.4 D. 审批触发器（APR）
@@ -404,15 +425,15 @@ Node/pnpm 版本在正式执行前按所选 DSH 的支持矩阵锁定，不在�
 | CHAN-10 | P1 | 无渠道、全 breaker 打开、全部 disable。 | deliver 返回空数组且不抛错；history delivered=false；Agent 继续执行。 |
 | CHAN-11 | P1 | 重试与熔断期间热改 macOS 配置或替换 adapter。 | 在途通知使用何时的配置/适配器有明确契约；breaker 不错误污染同名新渠道。 |
 | CHAN-12 | P2 | 多渠道均超时形成队头阻塞，后续通知持续进入。 | 记录最大排队时间、队列长度和内存；达到预期有界策略或明确接受的串行语义，不无限失控。 |
-| CHAN-13 | P1 | 分别注入永久错误（非 macOS、未授权、非法可执行文件）与临时错误（超时、短暂退出）。 | 明确错误分类策略；永久错误是否仍做 4 次无差别重试需有验收结论，不能无意义延迟后续通知或重复申请权限。 |
+| CHAN-13 | P1 | 分别注入永久错误（非目标平台、macOS 未授权、Windows 无 powershell、非法可执行文件）与临时错误（超时、短暂退出）。 | 明确错误分类策略；永久错误是否仍做 4 次无差别重试需有验收结论，不能无意义延迟后续通知或重复申请权限。 |
 
 ### 5.12 L. macOS 渠道适配器（MAC）
 
-L1–L4 用可执行替身记录 argv/env/退出码；不得依赖真实横幅判断参数。只有标注“实机”的项目在隔离权限环境执行。
+L1–L4 用可执行替身记录 argv/env/退出码；不得依赖真实横幅判断参数。只有标注“实机”的项目在隔离权限环境执行。非 darwin 平台不会注册该渠道（平台选择与不 spawn 的通用断言见 WIN-08）；即使直接实例化 `MacosChannel`，也会在探测/执行前报错。
 
 | ID | 优先级 | 场景与操作 | 预期结果 |
 |---|---|---|---|
-| MAC-01 | P0 | process.platform 非 darwin，所有后端分别可见。 | 在探测/执行前报“仅 macOS”，不启动任何进程；Registry 隔离错误，Agent 不受影响。 |
+| MAC-01 | P0 | process.platform 为非 darwin（linux/win32），所有后端分别可见；同时直接实例化适配器调用 send。 | 平台选择阶段即不注册 macOS 渠道（`BUILTIN_CHANNELS` 无对应项），配置中 `channels.macos.enabled=true` 也不会触发探测/发送；直接调用适配器时在探测/执行前报“仅 macOS”，不执行 which/helper/osascript，不启动任何进程；Registry 隔离错误，Agent 不受影响。 |
 | MAC-02 | P1 | 配置 Helper 可执行文件存在，同时 PATH 有其他工具。 | 优先 helper-app，使用配置/默认路径，不调用 which 或其他后端。 |
 | MAC-03 | P1 | Helper 不存在，terminal-notifier/alerter 可见性做四组合；再全不可见。 | 选择顺序严格为 terminal→alerter→osascript；which 失败继续探测，不提前中止。 |
 | MAC-04 | P1 | 首次探测后安装/删除工具、改 notifierApp/appIcon，重发并重载渠道。 | 缓存与热更新行为符合 BL-05；重载后可重新探测；不同通知不意外使用已删除路径。 |
@@ -431,7 +452,22 @@ L1–L4 用可执行替身记录 argv/env/退出码；不得依赖真实横幅�
 | MAC-17 | P1 | 实机：terminal 同 group 多条及不同 reminder key。 | 系统替换/并存行为与 dedupeKey 设计一致，不出现旧通知误点或无法区分的提醒风暴。 |
 | MAC-18 | P1 | notifierApp/appIcon 使用 `~`、相对路径、空格、非可执行文件、损坏 app；GUI Host 与终端 PATH 不同。 | 路径展开/解析和可执行性契约明确，不依赖偶然 cwd；检测失败可诊断；实际 DSH GUI 进程能按支持方式找到工具。 |
 
-### 5.13 M. Notix Helper 构建、签名与权限（HELPER）
+### 5.13 M. Windows 渠道适配器（WIN）
+
+自动化用注入的进程 runner / 纯函数断言 argv、env、toast XML，严禁在测试机上真的弹 toast 或写真实 AUMID；只有标注“实机”或 `pnpm notify-test:win` 的条目在隔离 Windows 环境执行。默认值、配置映射与失败分类同 2.4。
+
+| ID | 优先级 | 场景与操作 | 预期结果 |
+|---|---|---|---|
+| WIN-01 | P0 | win32 平台、`windows-system` 发送一条正文为单行的通知；捕获子进程调用、env 与 toast XML。 | 仅启动一次 `powershell.exe`，argv 恰为 `-NoProfile -NonInteractive -ExecutionPolicy Bypass -File <解析后的绝对路径>/toast.ps1`；title/body/url/sound 通过 `NOTIX_*` env 传递，不经过 shell 拼接；toast 模板为 `ToastGeneric`，含标题与正文 2 个 `<text>`；成功后历史渠道记录为 `windows-system`。 |
+| WIN-02 | P0 | 标题/正文参数化中文、Emoji、引号、反斜杠、`& < > " '`、`$(...)`、反引号、换行、超长文本与 XML/CDATA 片段。 | 用户文本只作为 env 值传入；脚本内 `SecurityElement::Escape` 后 XML 合法可解析，不注入标签、不执行命令；中文与 Emoji 不乱码；`toast.ps1` 自身保持 ASCII-only（构建产物与源逐字节一致）。 |
+| WIN-03 | P1 | 正文 0/1/2/3/4/10 行，含 CRLF、空行、纯空白行；标题为空/纯空白。 | 标题为空回退 `Notix`；正文按换行拆分、跳过空行、最多 3 行，`<text>` 总数最多 4 个（正文为空时仅 1 个标题）；多余行被丢弃且 XML 合法。 |
+| WIN-04 | P1 | `channels.windows.sound` on/off，分别捕获 toast XML；再验证默认值。 | on → `<audio src="ms-winsoundevent:Notification.Default"/>`；off → `<audio silent="true"/>`；默认 `sound=true`；系统静音/音量设置不改变 Notix 侧参数（实机另记）。 |
+| WIN-05 | P1 | icon 为空（默认）、自定义存在的绝对 PNG、带空格/反斜杠路径、相对路径、不存在文件。 | 默认解析到随包鲸鱼图标并以 `file:///` URI 作为 `appLogoOverride`；自定义绝对路径存在时按该路径生成合法 URI（空格/反斜杠正确转义）；相对路径与不存在文件的处理符合明确契约（缺省省略图标，至少不得误用其他文件），文字 toast 仍送达；路径不被拆成多个参数。 |
+| WIN-06 | P1 | 默认/自定义 `appId`，连续多次发送；再模拟注册表写入失败。 | 默认 `Notix.DSH` 与自定义 id 均写入 `HKCU\Software\Classes\AppUserModelId\<id>` 的 `DisplayName=Notix` 及存在时的 `IconUri`；等值重复写入幂等，不产生重复键或额外错误；写入失败时渠道报错交由重试/熔断，不阻断 Agent。 |
+| WIN-07 | P1 | `clickToOpen` on/off × `baseUrl` 空/http(s)/含 `&`、引号、查询参数/畸形 scheme。 | 仅 on 且非空时生成 `activationType="protocol" launch="<baseUrl>"`，URL 经 XML 转义；off/空不生成点击行为；畸形/危险 scheme 的处置按 NFR-06 的安全信任边界验收，不因 URL 额外启动进程。 |
+| WIN-08 | P0 | 在 darwin/linux 上以非 win32 平台启动（可用 mock platform），`channels.windows.enabled=true`；再在 darwin 上正常发送 macOS 通知。 | `BUILTIN_CHANNELS` 仅 darwin→macos、win32→windows；非 win32 不注册 Windows 渠道、不探测/不启动 `powershell.exe`、不写注册表；macOS 渠道不受影响；历史无 Windows 渠道记录；直接实例化 Windows 适配器也在启动进程前报“仅 Windows”。 |
+
+### 5.14 N. Notix Helper 构建、签名与权限（HELPER）
 
 所有构建用例先重定向输出和 HOME；真实签名仅使用专门测试身份。不得以 ad-hoc 构建成功推断通知权限可用。
 
@@ -451,7 +487,7 @@ L1–L4 用可执行替身记录 argv/env/退出码；不得依赖真实横幅�
 | HELPER-12 | P1 | 实机：横幅图标、默认声音、无声音和重复通知唯一 identifier。 | 有效签名显示 whale，声音正确；通知请求不互相覆盖；无意外常驻 Dock。 |
 | HELPER-13 | P0 | 在隔离目录验证 OUT 与安装目标相同、未知参数、`--install` 非首参、拷贝/plist 阶段失败及 bundleId 含 XML 特殊字符。 | 禁止自删除后自复制等破坏路径；参数错误有用法提示；构建/安装尽量原子且失败可恢复；bundleId 安全校验或转义，不生成畸形 plist。 |
 
-### 5.14 N. 真实 DSH 端到端场景（E2E）
+### 5.15 O. 真实 DSH 端到端场景（E2E）
 
 执行时使用独立 profile、短阈值和确定性测试工具/事件，避免真实等待 10–15 分钟。复用受测 DSH 实例，不为测试另起替代 GUI；Host/Client 变更按实际构建要求刷新页面。
 
@@ -465,15 +501,15 @@ L1–L4 用可执行替身记录 argv/env/退出码；不得依赖真实横幅�
 | E2E-06 | P0 | 注入 turn/agent/tool 普通错误与超时，含同源双事件。 | 开关、去重、冷却生效；Agent 错误处理不被通知异常改变。 |
 | E2E-07 | P0 | 设置页修改开关/阈值/语言/详略/quiet/channel，立即触发事件并重启后再触发。 | 不 remount 即按新值运行；重启后仍一致；UI 不接受值时无假成功。 |
 | E2E-08 | P1 | 两个会话同时审批、提问、运行和失败，交叉处理。 | 通知标题可归属正确会话；busy/cooldown/timer/history 不串线。 |
-| E2E-09 | P1 | 免打扰跨越本地午夜，含审批/问题/普通/低优先级。 | 应用层静默/穿透正确，macOS 系统 Focus 单独记录；退出后无未定义补发。 |
+| E2E-09 | P1 | 免打扰跨越本地午夜，含审批/问题/普通/低优先级。 | 应用层静默/穿透正确，macOS/Windows 系统 Focus/免打扰单独记录；退出后无未定义补发。 |
 | E2E-10 | P1 | 重启 Host/进程，恢复 history/dedupe 和在途事件；重载插件再触发。 | 历史和去重按契约恢复；无重复监听、重复通知、幽灵 timer。 |
 | E2E-11 | P0 | 渠道拒绝、超时、连续失败和恢复，同时让 Agent 继续执行长任务。 | 通知失败不影响工具结果/turn 结果；重试熔断有界；恢复后新通知可达。 |
 | E2E-12 | P1 | storageDomain 不可用/写失败，继续完成一次真实 Agent turn。 | 内存降级，历史能力符合预期；Agent 成功/失败只由自身决定。 |
-| E2E-13 | P1 | terminal-notifier 下点击通知回跳当前 GUI；含多会话。 | 打开配置的准确 baseUrl；不打开旧实例或危险地址；其他后端按能力矩阵验收。 |
+| E2E-13 | P1 | terminal-notifier 下点击通知回跳当前 GUI；含多会话；Windows 平台以 `pnpm notify-test:win` 做对应快速自检。 | 打开配置的准确 baseUrl；不打开旧实例或危险地址；其他后端按能力矩阵验收；Windows 点击行为按 WIN-07 验收。 |
 | E2E-14 | P1 | 卸载/禁用插件后再次运行 Agent；重新启用。 | 卸载后无通知/订阅/配置写入；重新启用单实例恢复，历史与配置按产品策略保留。 |
 | E2E-15 | P1 | 从旧双包升级真实 profile，运行一次审批和设置保存。 | 无重复通知/卡片；原 id 配置保留；旧 UI 不再参与运行。 |
 
-### 5.15 O. 非功能、韧性与安全隐私（NFR）
+### 5.16 P. 非功能、韧性与安全隐私（NFR）
 
 | ID | 优先级 | 场景与操作 | 预期结果/指标 |
 |---|---|---|---|
@@ -485,7 +521,7 @@ L1–L4 用可执行替身记录 argv/env/退出码；不得依赖真实横幅�
 | NFR-06 | P0 | baseUrl 使用 http、https、空值、畸形 URL、file/javascript/自定义 scheme；配置文件路径含特殊字符。 | 采用明确允许列表和本机信任边界；危险输入不自动打开/执行；错误可诊断且不影响 Agent。 |
 | NFR-07 | P1 | 配置对象包含 `__proto__`/constructor/prototype、极深对象和未知键。 | 不污染全局原型、不越权写配置；资源消耗有界；非法配置不绕过 Schema。 |
 | NFR-08 | P1 | 存储文件无权限、磁盘满、损坏、并发写、进程强杀后重启。 | 不损坏 DSH 其他 domain；Notix 可降级/恢复；无敏感信息意外扩散，错误可诊断。 |
-| NFR-09 | P1 | 无通知权限、只读设置、无签名、无 PATH 工具、非 macOS。 | 每种环境都有真实能力提示和可控降级，不显示虚假“已送达/已保存”。 |
+| NFR-09 | P1 | 无通知权限、只读设置、无签名、无 PATH 工具、非 macOS/非 Windows、无 powershell。 | 每种环境都有真实能力提示和可控降级，不显示虚假“已送达/已保存”；未匹配平台不注册渠道、不启动对应进程。 |
 | NFR-10 | P1 | 随机生成合法事件序列（模型化状态测试）：ask/decide、open/settle、start/end、register/settle、dispose。 | 不变量始终成立：无结束后看门通知、无重复 dedupe、无跨会话清理、无 Agent 决策副作用、timer 最终可收敛。 |
 | NFR-11 | P2 | UI 可访问性扫描、200% 缩放、系统减少动态效果（若适用）。 | 无严重可访问性违规；关键设置和状态可读可操作。 |
 | NFR-12 | P1 | 全部测试结束后检查测试 HOME/profile/签名/通知记录和临时进程。 | 无残留后台进程、测试通知风暴、真实用户文件修改或密钥；环境可重复创建。 |
@@ -506,18 +542,22 @@ L1–L4 用可执行替身记录 argv/env/退出码；不得依赖真实横幅�
 | 资产 | 已有覆盖 | 本计划需重点补齐 |
 |---|---|---|
 | `test/core.test.js`（9 条） | volatile/default、部分中英文渲染、时长/截断、基本 dedupe、错误冷却、基础 quiet、已送达历史 | 全类型/全边界、持久化失败、队列、所有 quiet 组合、历史 200/TTL、API 非法输入和隐私 |
-| `test/triggers.test.js`（11 条） | 审批基本提醒/决定、问题 open/continued、turn 看门与 busy、双源错误去重、长短 turn、job 看门/完成部分开关 | 多数边界、热更新、多会话/同 ID、多审批、session dispose、重启、job facts 顺序、工具错误矩阵 |
+| `test/triggers.test.js`（12 条） | 审批基本提醒/决定、问题 open/continued、turn 看门与 busy、双源错误去重、长短 turn、job 看门/完成部分开关、seeding 静默 | 多数边界、热更新、多会话/同 ID、多审批、session dispose、重启、job facts 顺序、工具错误矩阵 |
 | `test/integration.test.js`（5 条） | 真实 Cordis 加载、ctx.notix、少量 Schema 默认/非法语言、基本 dispose、history 重开恢复和 dedupe 表写入 | projection 退订、volatile 真热更新、重启后同 key 真正被 dedupe 拦截、生命周期竞争、存储异常、渠道故障与纯观察者 |
 | `test/package.test.js`（4 条） | 单包导出声明、随包后台任务默认关闭、单 Loader/无旧 UI、1024 RGBA 图标 | 实际 tarball 内容、生产安装、版本矩阵、迁移、运行时入口与资源路径 |
-| `test/ui.test.js`（5 条） | 浏览器 bundle 注入契约、完整卡片渲染、摘要去重、URL 联动、缺失表单降级 | 真实浏览器 DOM、保存持久化、键盘/焦点、窄屏和主题需由 L3/L5 覆盖 |
-| `test/macos.test.js`（4 条） | helper/terminal-notifier/osascript 参数、声音/图标/URL 开关、失败不自动降级 | 真实授权、签名 Helper、系统横幅和点击行为需 L6 实机覆盖 |
+| `test/build.test.js`（3 条） | Client source map、Host 产物与源逐字节一致、构建/prepack 工具链固定 | 针对 `toast.ps1` 的 ASCII-only 检查、跨平台资源路径 |
+| `test/ui.test.js`（6 条） | 浏览器 bundle 注入契约、完整卡片渲染、摘要去重、URL 联动、缺失表单降级、按 UA 平台感知渠道（Windows 显示 AppID/图标字段） | 真实浏览器 DOM、保存持久化、键盘/焦点、窄屏和主题需由 L3/L5 覆盖 |
+| `test/macos.test.js`（5 条） | 默认图标解析、helper/terminal-notifier/osascript 参数、声音/图标/URL 开关、失败不自动降级 | 真实授权、签名 Helper、系统横幅和点击行为需 L6 实机覆盖 |
+| `test/channels.test.js`（本轮新增，8 条） | SystemChannel 基类契约、backend 检测缓存、BUILTIN_CHANNELS/createPlatformChannels 平台选择 | 真实平台差异、渠道热更新生命周期 |
+| `test/windows.test.js`（本轮新增，12 条 + 1 条可选真机） | WindowsChannel 配置映射、toastEnvironment 纯函数、argv/env、平台拒绝、可选真实 toast（`NOTIX_TOAST_E2E=1`） | Windows 实机品牌/声音/点击/注册表幂等 |
 | `test/error.test.js`（3 条） | 普通工具错误、工具超时独立开关、禁用抑制与 minimal 隐私 | 更多并发/重启组合仍待扩展 |
 | `scripts/smoke-client.mjs` | VM 中模块 id、factory apply/inject、依赖 smoke | 不是浏览器渲染测试；需 UI 组件和真实 DSH 两页面 E2E |
 | `scripts/test-macos-notification.mjs` | 设计为真实渠道自检，但不属于 `pnpm test` | BL-09 方法不匹配需先处理；还缺四后端 argv mock、权限、签名、点击、声音、图标实机矩阵 |
+| `scripts/test-windows-notification.mjs`（本轮新增，`pnpm notify-test:win`） | 手动 Windows 渠道自检，不属于 `pnpm test`，不默认运行 | 实机通知权限、Focus、图标缓存、无 powershell 场景 |
 | `test/mock.js` | fake context/clock/timer/projection 与捕获渠道，适合扩展确定性组件测试 | 绕过 Schema 和随包 patch，无 configForms/Loader；全局 Date.now 缺统一恢复，正式扩测前先增加 afterEach 清理和 timer/listener 泄漏断言 |
 | macOS Helper 构建/Swift | 当前无对应自动化测试资产 | 构建失败、签名、安装隔离、plist、授权回调、add 错误、退出码和日志 |
 
-本轮已执行自动化测试共 41 条并全部通过；执行结果见 [测试执行报告](TEST_REPORT.zh-CN.md)。本计划仍保留未执行的高成本场景，不能把 41 条通过等同于全部用例通过。
+本轮已执行自动化测试共 41 条并全部通过（不含本轮新增的渠道/WIN 用例）；执行结果见 [测试执行报告](TEST_REPORT.zh-CN.md)。本计划仍保留未执行的高成本场景，不能把 41 条通过等同于全部用例通过。
 
 ## 8. 能力—用例追踪矩阵
 
@@ -534,6 +574,8 @@ L1–L4 用可执行替身记录 argv/env/退出码；不得依赖真实横幅�
 | 免打扰、渲染、历史 | CORE、STORE | 边界、不重复、不泄漏、持久恢复 |
 | 渠道重试/熔断/多通道 | CHAN | 次数/延迟/超时、最终 history、故障隔离 |
 | macOS 四后端 | MAC、HELPER、E2E-13 | argv、权限、图标/声音/点击、无注入 |
+| Windows PowerShell/WinRT toast | WIN、CHAN、NFR-06/09 | env/XML 转义、声音/图标/点击、AUMID 幂等、非 Windows 不 spawn |
+| 平台选择与不误启动 | MAC-01、WIN-08、PKG-12 | 仅注册当前平台渠道、无跨平台进程/注册表副作用 |
 | 多会话/重载/故障/性能安全 | PKG/UQ/APR/LT、NFR | 隔离、有界资源、无残留 |
 
 ## 9. 执行阶段与准入/准出
@@ -550,17 +592,18 @@ L1–L4 用可执行替身记录 argv/env/退出码；不得依赖真实横幅�
 
 - 扩展现有 Node 测试：CFG、APR、UQ、LT、ERR、CMP、CORE、STORE、CHAN。
 - 参数化完整开关和边界矩阵；接入覆盖率与随机事件状态测试。
-- 每次提交运行，真实 macOS 进程全部由替身替代。
+- 每次提交运行，真实通知进程（macOS/Windows）全部由替身替代。
 
 ### 阶段 2：Host/包/UI 集成
 
 - 真实 Cordis 生命周期、volatile 热更新、storageDomain、打包安装。
 - UI 组件测试后，再进入真实 DSH 两页面联动和升级场景。
 
-### 阶段 3：macOS 专项
+### 阶段 3：macOS / Windows 专项
 
-- 先完成可执行替身和临时 HOME 构建测试，再使用专门签名执行 Helper/系统通知实机矩阵。
-- 记录后端、macOS、权限、签名、Focus 状态以及截图/录屏，不能把“进程退出 0”等同于“用户看到横幅”。
+- 先完成可执行替身、注入 runner 与临时 HOME/appId 测试，再使用专门签名执行 Helper/系统通知实机矩阵。
+- Windows 侧在隔离环境执行 toast、声音、图标、点击和注册表幂等实机验证，并记录 PowerShell/Windows 版本与通知/Focus 状态。
+- 记录后端、平台、权限、签名、Focus 状态以及截图/录屏，不能把“进程退出 0”等同于“用户看到横幅/Toast”。
 
 ### 阶段 4：真实 DSH E2E 与非功能
 
@@ -570,7 +613,7 @@ L1–L4 用可执行替身记录 argv/env/退出码；不得依赖真实横幅�
 ### 发布准出
 
 1. P0/P1 全通过，P2 未执行项有风险接受记录。
-2. 所有支持安装方式、DSH 版本和 macOS 后端均有结果；不适用项说明原因。
+2. 所有支持安装方式、DSH 版本和 macOS/Windows 渠道均有结果；不适用项说明原因。
 3. 无未处理的 Agent 阻断、审批/回答越权、敏感数据泄漏、配置破坏或无限重试问题。
 4. 测试报告、覆盖率、缺陷清单、实机证据、性能数据和环境清理记录齐全。
 5. README、配置 Schema、UI 和打包默认值一致；测试计划中的“待确认”全部转为明确结论。

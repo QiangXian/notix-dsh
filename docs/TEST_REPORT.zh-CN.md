@@ -1,6 +1,8 @@
 # Notix DSH 测试执行报告
 
 > 目录说明（2026-10-25 后续）：手写源码已统一迁至 `src/host/` 与 `src/client/`，`lib/` 现为全量生成目录。本文记录的是此前快照的执行结果；后续目录迁移后的验证以当前开发指南和最新命令输出为准。
+>
+> 2026-10-26 追加：Windows 支持轮次（新增 Windows 通知渠道、渠道层跨平台模块化）的执行结果见[第 10 节](#10-windows-支持轮次执行报告2026-10-26)；该轮环境为 Windows 实机，与第 2 节的 macOS 环境不同。
 
 > 执行日期：2026-10-25（Asia/Shanghai）
 >
@@ -150,3 +152,44 @@ UI 测试没有改动当前用户的 DSH profile、没有启动替代 GUI；使�
 | `test/package.test.js` | 新增随包后台任务默认值一致性测试 |
 | `docs/TEST_PLAN.zh-CN.md` | 增加 UX 验收与 UI-23～26，用例总数 228 |
 | `docs/test-evidence/*` | 本轮 UI 证据：修复前/UX 清理前（均为历史，不代表当前界面）、完整设置页、窄屏、插件入口、真实通知截图 |
+
+## 10. Windows 支持轮次执行报告（2026-10-26）
+
+> 本轮修复「notix-dsh 在 Windows 上无法触发通知」，并在同一次改动中把通知渠道层重构为跨平台模块化结构。环境为 Windows 11 实机 + DSH 桌面运行时；macOS 后端本轮未做实机回归，仅保留原自动化保护。
+
+### 10.1 问题与根因
+
+| 项 | 内容 |
+|---|---|
+| 现象 | Windows 上触发器正常产生历史记录（`~/.dsh/storages/notix/history`），但每条记录都是 `delivered: false`、`channels: []`，桌面没有任何通知。 |
+| 根因 | 内置渠道只有 `channels/macos.js`，且 `channels.macos.enabled` 默认为 `true`。Windows 上它照常被注册，`send()` 里先抛 "macos-system channel is only available on macOS"，通知随后被 ChannelRegistry 的重试/熔断吞掉；代码里没有任何 Windows 通知后端。 |
+| 维护问题 | 注册逻辑直接写死 macOS；渠道公共能力（配置读取、声音/点击跳转、后端探测缓存、进程执行、平台守卫）无法复用，新增平台需要复制整套逻辑。 |
+
+### 10.2 修复内容
+
+- **渠道层模块化**：新增 `SystemChannel` 基类（`base.js`：实时配置、`sound`/`clickUrl` 派生、平台守卫、后端只探测一次且失败不缓存、可注入进程 runner）与共享工具（`shared.js`：包资源定位 `findPackageRoot`、带超时/隐藏窗口的 `runTool`）；`macos.js` 与 `windows.js` 只保留平台差异。
+- **平台注册表**：`channels/index.js` 提供 `BUILTIN_CHANNELS`（`darwin → macos`、`win32 → windows`）与 `createPlatformChannels()`；`core/notix.js` 只注册当前平台且配置启用的渠道，配置变更时销毁重建，其他平台不注册、不探测、不启动任何进程。
+- **新增 Windows 渠道 `windows-system`**：通过随包 `toast.ps1` 调 Windows PowerShell 5.1 的 WinRT `ToastNotification`。标题/正文等经 `NOTIX_*` 环境变量传入（不经命令行拼接），脚本用 `SecurityElement::Escape` 转义后生成 `ToastGeneric`；支持声音开关、默认/自定义图标（`appLogoOverride`）、正文多行、同 tag 替换与点击跳转（protocol activation）。通过 `HKCU\Software\Classes\AppUserModelId\Notix.DSH` 注册应用标识，使横幅显示 **Notix** 名称与鲸鱼图标而不是 PowerShell。`toast.ps1` 全 ASCII，经 `-File` 执行。
+- **配置与 UI**：新增 `channels.windows { enabled, sound, clickToOpen, baseUrl, appId, icon }` 默认值、Loader schema 与随包 `cordis.patch.yml`；设置卡片按 `navigator.userAgent` 只渲染当前平台渠道，Windows 额外显示 AppID/图标输入；中英文文案同步。
+- **测试与文档**：新增 `test/channels.test.js`、`test/windows.test.js`（注入 runner，绝不在测试中真发通知）、`scripts/test-windows-notification.mjs` 与 `pnpm notify-test:win`；`test/ui.test.js` 增加按 UA 平台感知的回归用例（Windows UA 渲染 AppID/图标字段）；core/integration 测试显式关闭两个内置渠道；修正 `.gitignore` 断言在 CRLF 工作区失败的问题；README/README.zh/DEVELOPMENT/TEST_PLAN 增加 Windows 与渠道架构说明。
+
+### 10.3 验证结果
+
+| 项 | 结果 |
+|---|---|
+| 完整本地门禁 | `pnpm verify` 通过：`pnpm test`（`pretest` 重建 `lib/`）→ 68 条用例 **63 通过 / 0 失败 / 5 跳过**（4 条 macOS 后端用例按 `darwin` 跳过、1 条 Windows 真机 toast 需 `NOTIX_TOAST_E2E=1`）→ `pnpm smoke` 通过 → `pnpm build:check` 通过。 |
+| 构建产物 | `lib/` 与 `src/host/` 逐字节一致（含 `channels/toast.ps1`）；`lib/client.js` 由 tsdown 重新生成。 |
+| 发布包 | `npm pack --dry-run` 通过：66 个文件，含 `lib/channels/toast.ps1`、`src/host/channels/toast.ps1`、`scripts/test-windows-notification.mjs`；不含 `test/`、`.tmp/`。 |
+| 真实通知（通道自检） | `node scripts/test-windows-notification.mjs --no-sound` 输出 `[notix] delivered through powershell-toast (C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe)`，横幅实际显示。 |
+| 真实通知（完整管线） | 直接使用构建产物 `lib/`：`NotixCore` + 默认 `channels.windows` 投递后，历史记录为 `delivered: true, channels: ["windows-system"]`，桌面 toast 实际显示标题、两行正文、Notix 名称与鲸鱼图标。 |
+| 文本与转义 | 中文标题/正文、引号 `"`、`& < >`、CRLF 多行正文均正确显示；`toast.ps1` 自身保持 ASCII，构建产物与源一致。 |
+| 平台隔离 | 非 win32 不注册 Windows 渠道、不探测 PowerShell、不写注册表、不弹 toast（`test/channels.test.js`、`test/windows.test.js` 注入平台断言）；非 darwin 的 macOS 渠道同样在启动进程前拒绝。 |
+
+环境：Windows 11（10.0.26200），Windows PowerShell 5.1.26100.9711，Node.js 24.18.0，pnpm 10.26.2，DSH 桌面运行时（本机安装，profile 以 `link:` 指向本仓库）。
+
+### 10.4 遗留与注意
+
+1. **需要重启 DSH 才能生效**：当前正在运行的 DSH 桌面实例在进程内缓存了旧 Host 插件模块；重启 DSH 后才会加载新的 `lib/`（Windows 渠道会在启动时自动注册）。
+2. 点击跳转依赖 toast protocol activation；若系统策略/安全软件拦截协议激活，toast 仍正常显示，仅点击可能无动作（README 排障已说明）。
+3. Focus Assist / 通知总开关 / 应用通知开关由 Windows 控制，Notix 无法绕过；README 排障已列出检查路径。
+4. 本轮未在 Windows 上实测 macOS 后端（`isMac=false` 用例跳过），也未覆盖睡眠恢复、通知风暴等长稳场景。

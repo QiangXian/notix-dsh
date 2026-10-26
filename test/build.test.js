@@ -77,7 +77,8 @@ test('unified build and prepack use a pinned, explicit toolchain', async () => {
   assert.ok(manifest.files.includes('docs/DEVELOPMENT.md'))
 
   const gitignore = await readProjectFile('.gitignore')
-  assert.match(gitignore, /(?:^|\n)lib\/(?:\n|$)/, 'generated lib/ must be ignored by Git')
+  // Match per line so a CRLF working tree (core.autocrlf) passes too.
+  assert.match(gitignore, /^lib\/\r?$/m, 'generated lib/ must be ignored by Git')
 
   const bundle = await readProjectFile('lib/client.js')
   assert.match(bundle, /^\/\/ Generated from src\/client\/\. Do not edit directly/)

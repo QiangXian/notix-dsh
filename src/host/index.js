@@ -4,7 +4,7 @@
  * Pure observer: the plugin never registers an answerer and never appends
  * session events. It watches approvals, pending questions, long turns/jobs,
  * terminal errors, and completions, then delivers notifications through its
- * channel registry (macOS system notification in v1).
+ * channel registry (the system notification channel of the current platform).
  * @module notix-dsh
  */
 import { readConfig } from './config.js'

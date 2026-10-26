@@ -56,6 +56,14 @@ export const DEFAULTS = Object.freeze({
       notifierApp: '',
       appIcon: '',
     }),
+    windows: Object.freeze({
+      enabled: true,
+      sound: true,
+      clickToOpen: true,
+      baseUrl: '',
+      appId: '',
+      icon: '',
+    }),
   }),
 })
 

@@ -27,7 +27,9 @@ async function createApp(overrides = {}) {
   const notifications = []
   await root.plugin(notix, {
     language: 'en',
-    channels: { macos: { enabled: false } },
+    // Both built-in channels are disabled: an automated run must never post a
+    // real notification or spawn a platform helper, whatever OS it runs on.
+    channels: { macos: { enabled: false }, windows: { enabled: false } },
     triggers: { approval: { remindAfterMs: 60_000 } },
     ...Object.fromEntries(Object.entries(overrides).filter(([key]) => key !== 'storage')),
   })
@@ -78,8 +80,16 @@ test('the Loader schema applies defaults and rejects invalid values', async () =
     const value = (node) => (typeof node?.get === 'function' ? node.get() : node)
     assert.equal(value(config.triggers.longTask.turnThresholdMs), 600_000)
     assert.equal(value(config.channels.macos.enabled), false)
+    assert.equal(value(config.channels.windows.enabled), false)
     // Every editable leaf is volatile, so dsh-settings exposes the namespace.
     assert.equal(value(config.triggers.approval.enabled), true)
+
+    // The schema itself defaults the Windows channel on, without an app id or
+    // icon override, so a fresh install posts WinRT toasts as "Notix".
+    const defaults = notix.Config({})
+    assert.equal(value(defaults.channels.windows.enabled), true)
+    assert.equal(value(defaults.channels.windows.appId), '')
+    assert.equal(value(defaults.channels.windows.icon), '')
   } finally {
     await app.root.fiber.dispose()
   }

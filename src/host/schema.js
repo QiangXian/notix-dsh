@@ -32,6 +32,16 @@ export function buildSchema(z) {
           appIcon: z.string().default('').volatile(),
         })
         .default({}),
+      windows: z
+        .object({
+          enabled: z.boolean().default(true).volatile(),
+          sound: z.boolean().default(true).volatile(),
+          clickToOpen: z.boolean().default(true).volatile(),
+          baseUrl: z.string().default('').volatile(),
+          appId: z.string().default('').volatile(),
+          icon: z.string().default('').volatile(),
+        })
+        .default({}),
     })
     .default({})
 

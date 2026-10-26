@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises'
 import vm from 'node:vm'
 
 /** Load the browser bundle with the same module-loader contract DSH uses. */
-async function loadClient() {
+async function loadClient(options = {}) {
   const source = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
   const react = {
     createElement: (type, props, ...children) => ({ type, props: props ?? {}, children }),
@@ -19,8 +19,11 @@ async function loadClient() {
     ['@deepseek-ai/dsh-client-ui-primitives', primitives],
   ])
   let registered
+  const windowStub = { __ModuleLoader__: { load: (entry) => { registered = entry } } }
+  // The settings card detects the platform through window.navigator.userAgent.
+  if (options.userAgent !== undefined) windowStub.navigator = { userAgent: options.userAgent }
   vm.runInNewContext(source, {
-    window: { __ModuleLoader__: { load: (entry) => { registered = entry } } },
+    window: windowStub,
     console,
     setTimeout,
     clearTimeout,
@@ -123,6 +126,34 @@ test('URL field is disabled when click-to-open is off', async () => {
   const url = nodes(tree).find((node) => node.props.id === 'notix-ch-url')
   assert.ok(url)
   assert.equal(url.props.disabled, true)
+})
+
+test('channel section follows the platform the GUI runs on', async () => {
+  const windowsClient = await loadClient({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' })
+  const windowsForm = fakeForm({
+    channels: { windows: { enabled: true, sound: true, clickToOpen: true, baseUrl: '', appId: '', icon: '' } },
+  })
+  const windowsApp = install(windowsForm)
+  windowsClient.apply(windowsApp.ctx)
+  const windowsNodes = nodes(windowsApp.pages[0].component({ notixForm: windowsForm, t: (key) => key }))
+  const windowsIds = windowsNodes.map((node) => node.props.id).filter((id) => typeof id === 'string')
+  assert.ok(windowsIds.includes('notix-ch-url'), 'the shared URL field stays present')
+  assert.ok(windowsIds.includes('notix-win-appid'), 'Windows exposes the AppID field')
+  assert.ok(windowsIds.includes('notix-win-icon'), 'Windows exposes the icon field')
+  assert.ok(windowsNodes.some((node) => node.props.label === 'channelAppId'))
+  assert.ok(windowsNodes.some((node) => node.props.title === 'channelEnabledWindows'))
+
+  const macClient = await loadClient({ userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36' })
+  const macForm = fakeForm({})
+  const macApp = install(macForm)
+  macClient.apply(macApp.ctx)
+  const macNodes = nodes(macApp.pages[0].component({ notixForm: macForm, t: (key) => key }))
+  const macIds = macNodes.map((node) => node.props.id).filter((id) => typeof id === 'string')
+  assert.ok(macIds.includes('notix-ch-url'))
+  assert.equal(macIds.includes('notix-win-appid'), false, 'macOS must not render the Windows AppID field')
+  assert.equal(macIds.includes('notix-win-icon'), false, 'macOS must not render the Windows icon field')
+  assert.ok(macNodes.some((node) => node.props.title === 'channelEnabledMacos'))
+  assert.equal(macNodes.some((node) => node.props.title === 'channelEnabledWindows'), false)
 })
 
 test('summary view still renders with a ready form', async () => {
