@@ -13,9 +13,9 @@
 
 Notix 是纯观察者：不注册审批/回答者、不向会话日志追加事件、不阻塞 agent。它只订阅共享事件面，通过可插拔的渠道注册表投递通知，内置 macOS 与 Windows 系统通知渠道。
 
-> **状态：** `v0.3.0` —— 首个公开版本，支持 macOS 与 Windows。
+> **状态：** `v0.3.0` —— 首个公开版本，已发布到 [npm registry](https://www.npmjs.com/package/notix-dsh)，支持 macOS 与 Windows。
 >
-> **npm 发布状态：** 包名为 `notix-dsh`。如果 `npm view notix-dsh version` 仍返回 404，说明该版本尚未进入 npm registry，请先按[从仓库克隆安装](#从仓库克隆安装)使用。
+> **安装：** `dsh plugin --profile <name> add notix-dsh`（见[安装](#安装)），或按[从仓库克隆安装](#从仓库克隆安装)直接运行 checkout。
 
 ## 目录
 

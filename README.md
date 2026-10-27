@@ -13,9 +13,9 @@ Desktop notifications for [DeepSeek Harness](https://github.com/deepseek-ai/deep
 
 Notix is a pure observer: it never registers an approval/answerer, never appends session events, and never blocks the agent loop. It watches the shared event surfaces and delivers notifications through a pluggable channel registry with built-in macOS and Windows system channels.
 
-> **Status:** `v0.3.0` — first public release. macOS and Windows are supported.
+> **Status:** `v0.3.0` — first public release, on the [npm registry](https://www.npmjs.com/package/notix-dsh). macOS and Windows are supported.
 >
-> **Registry availability:** the package is `notix-dsh` on npm. If `npm view notix-dsh version` still returns 404, the release has not reached the registry yet; use the [repo-clone install](#from-a-repo-clone) in the meantime.
+> **Install:** `dsh plugin --profile <name> add notix-dsh` (see [Install](#install)), or use the [repo-clone install](#from-a-repo-clone) to run a checkout.
 
 ## Contents
 

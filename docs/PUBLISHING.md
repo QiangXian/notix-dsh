@@ -9,13 +9,14 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for the build/test workflow and
 long form: pre-flight, the exact command sequence, the tarball contract, DSH-side install and
 compatibility mechanics, post-publish verification, and rollback.
 
-Facts below were verified on 2026-10-26 against `notix-dsh@0.3.0` with:
+Facts below were verified on 2026-10-26 and refreshed with the first successful publish on
+2026-10-27 against `notix-dsh@0.3.0` with:
 
 | Tool | Version |
 | --- | --- |
 | Node (build/verify) | 22.23.2 (`engines.node` accepts `^22.18.0 \|\| >=24.0.0`) |
 | pnpm | 10.26.2 (pinned by `packageManager`) |
-| npm CLI | 10.9.8 (pnpm 10 delegates the upload to it) |
+| npm CLI | 10.9.8 for `npm publish`; `npm stage` commands need npm **>= 11.15.0** (use `npx npm@latest stage …`) |
 | DeepSeek Harness desktop runtime | dsh **0.2.1-rc.3** (Node 24.21.0, pnpm 11.28.5) |
 
 ---
@@ -219,22 +220,27 @@ corepack enable
 pnpm install --frozen-lockfile
 
 # npm auth: pnpm 10 delegates the actual upload to the npm CLI, so npm credentials are what matter.
-npm login
-npm whoami
+npm login --registry=https://registry.npmjs.org
+npm whoami --registry=https://registry.npmjs.org
 
-# The name must be free (verified 2026-10-26: 404, i.e. available).
-npm view notix-dsh
+# Check the current state of the name (the project claimed it on 2026-10-27).
+npm view notix-dsh version dist-tags
 ```
 
-- Account: the npm user must own the unscoped name `notix-dsh` (first publish claims it).
-- 2FA: if the account uses "auth and writes", keep an OTP ready (`--otp=<code>`); `npm login` alone is
-  not enough for the publish step.
+- Account: the unscoped name `notix-dsh` belongs to this project after the 2026-10-27 first publish.
+  A *new* package name would need to be free (`npm view <name>` → 404) before publishing.
+- 2FA: the account requires 2FA for write actions. `npm login` alone is not enough for `npm publish`;
+  publish either with `--otp=<code>` from the terminal, with a **granular access token that has
+  "Bypass 2FA"** (`npm_…`, written to `.tmp/npm-token` and never committed), or by staging plus a
+  manual approval (§5.4). npm recommends deleting bypass tokens after use and preferring
+  `npm stage publish` + approval for automated flows.
 - Token-based publishing (CI or `NODE_AUTH_TOKEN`): needs read-write access to `notix-dsh`.
 - Registry: `publishConfig.registry` pins npmjs.org for publishing; consumers' registries are
-  unaffected.
-- Repository metadata is set (`repository`, `homepage`, `bugs`, MIT `LICENSE`). **Verify the
-  repository is publicly reachable before publishing** — npmjs.com's repository/homepage/bugs links
-  and any `raw.githubusercontent.com` README images depend on it. Unauthenticated checks:
+  unaffected. The maintainer machine's default registry is the npmmirror mirror, so pass
+  `--registry=https://registry.npmjs.org` explicitly for npm commands.
+- Repository metadata is set (`repository`, `homepage`, `bugs`, MIT `LICENSE`). The repository is
+  public (checked 2026-10-27), so npmjs.com's repository/homepage/bugs links and the
+  `raw.githubusercontent.com` README images resolve. Re-check with:
 
   ```sh
   curl -s -o /dev/null -w 'repo page: %{http_code}\n' https://github.com/QiangXian/notix-dsh
@@ -342,6 +348,45 @@ Use `--no-git-checks` only when you understand exactly what changed, and never r
 Do **not** publish with `--ignore-scripts` (skips `prepublishOnly`/`prepack`) or `--force` (bypasses
 the "version already exists" guard) except as an explicit recovery action.
 
+### 5.4 Staged publishing and the `0.0.0-stage` placeholder
+
+npm now ships **staged publishing** ([docs](https://docs.npmjs.com/staged-publishing/)): instead of
+going live immediately, a version can be staged and must be approved by a maintainer with 2FA, which
+supplies the "proof of presence" that token/CI publishes lack.
+
+```sh
+# Stage (no 2FA prompt; requires npm >= 11.15.0 and Node >= 22.14.0)
+npx npm@latest stage publish --registry=https://registry.npmjs.org
+
+# Review and approve (2FA prompt; or use npmjs.com → Staged Packages tab)
+npx npm@latest stage list notix-dsh
+npx npm@latest stage view <stage-id>
+npx npm@latest stage approve <stage-id>
+# npx npm@latest stage reject <stage-id>
+```
+
+What happened for this project's first publish (2026-10-27):
+
+- `npm publish notix-dsh-0.3.0.tgz` via the npm 10.9.8 CLI reported success, and the registry created
+  the **placeholder version `0.0.0-stage`** while processing the upload ("Temporary package
+  placeholder for staged publishing", two files).
+- About a minute later `0.3.0` went live and `dist-tags.latest` moved to `0.3.0`; no manual approval
+  was required for this publish.
+- The placeholder remains listed in `npm view notix-dsh versions` as a `stub: true` version. It is not
+  reachable through normal ranges or `latest`, but it can be removed (maintainer + 2FA, within 72 h of
+  the publish):
+
+  ```sh
+  npm unpublish notix-dsh@0.0.0-stage --force --registry=https://registry.npmjs.org
+  ```
+
+- For future versions, prefer keeping the plain `pnpm publish` flow for interactive releases. If you
+  move publishing to CI, use `npm stage publish` + a manual approval instead of a bypass-2FA token
+  (npm's guidance is to delete bypass tokens), and add the approval step to the release checklist.
+- `npm stage` subcommands do not exist in npm 10.9.8 (bundled with Node 22.23), so use
+  `npx npm@latest stage …`; the registry-side placeholder behaviour is independent of the local npm
+  version.
+
 ---
 
 ## 6. Post-publish verification
@@ -355,6 +400,19 @@ npm view notix-dsh engines peerDependencies --json
 
 Expect: `0.3.0`, `latest: 0.3.0`, a `https://registry.npmjs.org/notix-dsh/-/notix-dsh-0.3.0.tgz`
 tarball, an `sha512-…` integrity, `engines.dsh` intact, and `published at` earlier than `modified`.
+`npm view notix-dsh versions` may also list the `0.0.0-stage` stub from the first publish (§5.4);
+`latest` must still be `0.3.0`.
+
+### 6.1.1 Record of the `0.3.0` publish (2026-10-27)
+
+| Field | Value |
+| --- | --- |
+| version / tag | `0.3.0`, `latest` |
+| tarball | `https://registry.npmjs.org/notix-dsh/-/notix-dsh-0.3.0.tgz` |
+| shasum | `a788dcc030682c5e2c8158f6cab7c61134c345be` |
+| integrity | `sha512-g8Fu/DMpnkAomtDfQVUTYdiUJvg3d7fgHLH+4bIpHBgMahvqgSASd/omWmwWFGhKWaa0gSecHcO+tyuFkpbGKQ==` |
+| files / size | 33 files, 753.3 kB packed, 941,397 B unpacked |
+| verified | registry install + `dsh plugin add notix-dsh@0.3.0` in an isolated `DSH_HOME` (bundle reconciled, `dump-config` composes `id: notix`) |
 
 ### 6.2 Re-download and inspect the published tarball
 
