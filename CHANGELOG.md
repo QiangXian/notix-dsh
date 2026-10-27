@@ -53,7 +53,9 @@ settings card; the separate `notix-dsh-ui` package is no longer used.
 - The Windows helper stays ASCII-only so PowerShell 5.1 decodes it correctly, and all user-supplied
   text is XML-escaped before it reaches the toast XML.
 
-## [0.2.0] - 2026-10-24
+## 0.2.0 - 2026-10-24
+
+Internal single-package snapshot; never published to npm. `0.3.0` is the first npm release.
 
 ### Added
 
@@ -67,4 +69,3 @@ settings card; the separate `notix-dsh-ui` package is no longer used.
 
 [Unreleased]: https://github.com/QiangXian/notix-dsh/compare/v0.3.0...HEAD
 [0.3.0]: https://github.com/QiangXian/notix-dsh/releases/tag/v0.3.0
-[0.2.0]: https://github.com/QiangXian/notix-dsh/releases/tag/v0.2.0
