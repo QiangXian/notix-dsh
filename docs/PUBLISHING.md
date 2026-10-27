@@ -414,6 +414,25 @@ tarball, an `sha512-…` integrity, `engines.dsh` intact, and `published at` ear
 | files / size | 33 files, 753.3 kB packed, 941,397 B unpacked |
 | verified | registry install + `dsh plugin add notix-dsh@0.3.0` in an isolated `DSH_HOME` (bundle reconciled, `dump-config` composes `id: notix`) |
 
+### 6.1.2 Known issue: which README npmjs.com renders
+
+The registry populates the packument's `readme` field from the **last `README*` file in the tarball**
+(confirmed against `dsh-cost-meter`, whose `README.zh-CN.md` wins over its `README.md`). Because the
+`0.3.0` tarball ships `README.md` followed by `README.zh.md`, `npm view notix-dsh readme` and the
+npmjs.com package page currently show the **Chinese** README; its header links to the English one.
+
+That is cosmetic and cannot be changed for an already-published version. Fix it with the next release by
+picking one of:
+
+- drop `README.zh.md` from the `files` allowlist (GitHub stays bilingual, npm shows English), or
+- rename the Chinese file to `README-zh.md` so it sorts **before** `README.md` in the tarball (npm
+  keeps both, the last `README*` becomes English). Update the language-switch links in both READMEs,
+  `package.json` `files`, and the packaging test if you rename.
+
+Re-check after the next publish with:
+`curl -s https://registry.npmjs.org/notix-dsh | node -e "…"` or simply
+`npm view notix-dsh readme | head -5`.
+
 ### 6.2 Re-download and inspect the published tarball
 
 ```sh
